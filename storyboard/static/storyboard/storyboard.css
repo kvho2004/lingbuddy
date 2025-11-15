@@ -10,8 +10,8 @@ h3 span{
 
 }
 
-h2 span{
-  font-size: 12pt;
+h2 {
+  font-size: 14pt;
 }
 
 img {
@@ -98,13 +98,13 @@ input{
 }
 
 .left-nav-a:hover{
-    background-color: #4F67AE;
+    background-color: #6AC47E;
     color: white;
 
 }
 
 .active{
-    background-color: #4F67AE;
+    background-color: #6AC47E;
     color: white;
 }
 

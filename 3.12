@@ -1,0 +1,101 @@
+Collecting package metadata (current_repodata.json): ...working... done
+Solving environment: ...working... done
+
+## Package Plan ##
+
+  environment location: /Users/michela/opt/anaconda3/envs/final_proj
+
+  added / updated specs:
+    - python
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    libmpdec-4.0.0             |       h46256e1_0          77 KB
+    python-3.13.5              |h81a7116_100_cp313        14.1 MB
+    python_abi-3.13            |          0_cp313           7 KB
+    setuptools-78.1.1          |  py313hecd8cb5_0         2.2 MB
+    wheel-0.45.1               |  py313hecd8cb5_0         145 KB
+    ------------------------------------------------------------
+                                           Total:        16.5 MB
+
+The following NEW packages will be INSTALLED:
+
+  bzip2              pkgs/main/osx-64::bzip2-1.0.8-h6c40b1e_6 
+  ca-certificates    pkgs/main/osx-64::ca-certificates-2025.7.15-hecd8cb5_0 
+  expat              pkgs/main/osx-64::expat-2.7.1-h6d0c2b6_0 
+  libcxx             pkgs/main/osx-64::libcxx-19.1.7-haebbb44_3 
+  libffi             pkgs/main/osx-64::libffi-3.4.4-hecd8cb5_1 
+  libmpdec           pkgs/main/osx-64::libmpdec-4.0.0-h46256e1_0 
+  ncurses            pkgs/main/osx-64::ncurses-6.5-h923df54_0 
+  openssl            pkgs/main/osx-64::openssl-3.0.17-hee2dfae_0 
+  pip                pkgs/main/noarch::pip-25.3-pyhc872135_0 
+  python             pkgs/main/osx-64::python-3.13.5-h81a7116_100_cp313 
+  python_abi         pkgs/main/osx-64::python_abi-3.13-0_cp313 
+  readline           pkgs/main/osx-64::readline-8.3-h49f2429_0 
+  setuptools         pkgs/main/osx-64::setuptools-78.1.1-py313hecd8cb5_0 
+  sqlite             pkgs/main/osx-64::sqlite-3.50.2-hc8b0dd6_1 
+  tk                 pkgs/main/osx-64::tk-8.6.15-h3a5a201_0 
+  tzdata             pkgs/main/noarch::tzdata-2025b-h04d1e81_0 
+  wheel              pkgs/main/osx-64::wheel-0.45.1-py313hecd8cb5_0 
+  xz                 pkgs/main/osx-64::xz-5.6.4-h46256e1_1 
+  zlib               pkgs/main/osx-64::zlib-1.2.13-h4b97444_1 
+
+
+Proceed ([y]/n)? 
+
+Downloading and Extracting Packages
+python-3.13.5        | 14.1 MB   |            |   0% 
+wheel-0.45.1         | 145 KB    |            |   0% [A
+
+setuptools-78.1.1    | 2.2 MB    |            |   0% [A[A
+
+
+python_abi-3.13      | 7 KB      |            |   0% [A[A[A
+
+
+
+libmpdec-4.0.0       | 77 KB     |            |   0% [A[A[A[A
+wheel-0.45.1         | 145 KB    | #1         |  11% [A
+
+
+python_abi-3.13      | 7 KB      | ########## | 100% [A[A[Apython-3.13.5        | 14.1 MB   |            |   0% 
+wheel-0.45.1         | 145 KB    | ########8  |  88% [A
+
+
+
+libmpdec-4.0.0       | 77 KB     | ##         |  21% [A[A[A[A
+
+setuptools-78.1.1    | 2.2 MB    |            |   1% [A[Apython-3.13.5        | 14.1 MB   | 1          |   2% 
+
+
+python_abi-3.13      | 7 KB      | ########## | 100% [A[A[A
+
+setuptools-78.1.1    | 2.2 MB    | ##4        |  25% [A[Apython-3.13.5        | 14.1 MB   | 5          |   5% 
+
+setuptools-78.1.1    | 2.2 MB    | #####5     |  56% [A[A
+wheel-0.45.1         | 145 KB    | ########## | 100% [Apython-3.13.5        | 14.1 MB   | #2         |  13% 
+
+setuptools-78.1.1    | 2.2 MB    | ########5  |  85% [A[A
+
+
+
+libmpdec-4.0.0       | 77 KB     | ########## | 100% [A[A[A[A
+
+
+
+libmpdec-4.0.0       | 77 KB     | ########## | 100% [A[A[A[Apython-3.13.5        | 14.1 MB   | #6         |  17% python-3.13.5        | 14.1 MB   | ###        |  30% 
+
+setuptools-78.1.1    | 2.2 MB    | ########## | 100% [A[Apython-3.13.5        | 14.1 MB   | #####7     |  57% python-3.13.5        | 14.1 MB   | ########4  |  84% 
+                                                     [A
+
+                                                     [A[A
+
+
+                                                     [A[A[A
+
+
+
+                                                     [A[A[A[A

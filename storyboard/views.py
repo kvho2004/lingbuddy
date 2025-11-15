@@ -39,22 +39,17 @@ def home(request):
     context = {}
     user = request.user
     participant = get_object_or_404(Participant, user=  user)
-    if not participant.signform:
-        consentform = ConsentForm()
-        context['consentform'] = consentform
-        return render(request, 'storyboard/recruitment.html', context)
-    else:
-        displaylist = []
-        for i in range(4):
-            section = get_object_or_404(Section, id = i+1)
-            progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-score")
-            progress = progress_list[0]
-            displaylist.append(progress)
+    displaylist = []
+    for i in range(4):
+        section = get_object_or_404(Section, id = i+1)
+        progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-score")
+        progress = progress_list[0]
+        displaylist.append(progress)
 
-        context['displaylist'] = displaylist
-        context['user'] = user
-        print ("showshow")
-        return render(request, 'storyboard/welcome.html', context)
+    context['displaylist'] = displaylist
+    context['user'] = user
+    print ("showshow")
+    return render(request, 'storyboard/welcome.html', context)
 
 @login_required
 def section1(request):
@@ -795,7 +790,7 @@ def signform(request):
 
 ####register all students with their andrewids and passwords
 def batchregister():
-    data =  pd.read_csv("group2.csv")
+    data =  pd.read_csv("userlist.csv")
     for i in range(len(data)):
         entry = data.iloc[i]
         andrewid = entry["andrewid"].strip()

@@ -9,18 +9,19 @@
 <div class = "col-sm-12">
 <h1>Instructions</h1>
 <form class = "form-horizontal" method = "post" action = "{% url 'section2' %}">
-<p>In this section, you will practice <strong>writing Lead Questions</strong> for conducting Speed Dating with Storyboards. You will see examples of Storyrboards and Lead Questions written by previous students. </p>
+<p>Get practice with <strong>verbs</strong> and <strong>conjugation</strong>.</p>
+<p> Be sure to pay attention to provided context as well as linguistic cues in the sentences to help you choose proper verb conjugations.</p>
+
 <p>
-<strong>Remember</strong> to reflect on these examples and try to learn from them instead of simply trying to get the answers right.</p>
-<p>
-The possible score for this section is 5. The estimated time of completion is 10 minutes. You have unlimited attempts for this section. Please allocate enough time to finish the section in one sitting. If you leave in the middle of a section, your score for that section will be the number of questions you correctly answered. We will keep the highest score.</p>
+Once you feel confident in your abilities and to get more practice applying your skills in context, you can try one of our conversation chatbots by navigating to the Scenario-Based Chatbot tab.</p>
 
 <br>
-<h3>Section Status:</h3>
-<p style = "color: green;">
-   {{sectionstatus}} 
+<h3>Practice History:</h3>
+<p>
+   {{sectionstatus}} <br>
+   Maybe keep this to show how many practice problems they've worked through?
 </p>
-<input type="submit" name="section2" value = "Begin">
+<input type="submit" name="section2" value = "Start Practicing">
 {% csrf_token %}
 </form>
 </div>
