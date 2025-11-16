@@ -789,31 +789,67 @@ def signform(request):
 
 
 ####register all students with their andrewids and passwords
+#### ISSUE: Unique error constraint failed
+# def batchregister():
+#     data =  pd.read_csv("userlist.csv")
+#     for i in range(len(data)):
+#         entry = data.iloc[i]
+#         andrewid = entry["andrewid"].strip()
+#         user = User.objects.create_user(username = andrewid, password =andrewid)
+#         user.save()
+#         participant = Participant(user = user)
+#         participant.save()
+#         print(andrewid)
+#     successmessage = "group2 registered"
+#     return successmessage        
+
 def batchregister():
-    data =  pd.read_csv("userlist.csv")
+    data = pd.read_csv("userlist.csv")
     for i in range(len(data)):
         entry = data.iloc[i]
-        andrewid = entry["andrewid"].strip()
-        user = User.objects.create_user(username = andrewid, password =andrewid)
-        user.save()
-        participant = Participant(user = user)
-        participant.save()
-        print(andrewid)
+        andrewid = str(entry["andrewid"]).strip()
+
+        user, user_created = User.objects.get_or_create(username=andrewid)
+
+        if user_created:
+            user.set_password(andrewid)
+            user.save()
+        
+        participant, part_created = Participant.objects.get_or_create(user=user)
+
     successmessage = "group2 registered"
-    return successmessage        
+    return successmessage
+
+# def batchregister_group1():
+#     data =  pd.read_csv("group1.csv")
+#     for i in range(len(data)):
+#         entry = data.iloc[i]
+#         andrewid = entry["andrewid"].strip()
+#         user = User.objects.create_user(username = andrewid, password =andrewid)
+#         user.save()
+#         participant = Participant(user = user)
+#         participant.save()
+#         print(andrewid)
+#     successmessage = "group1 registered"
+#     return successmessage
 
 def batchregister_group1():
-    data =  pd.read_csv("group1.csv")
+    data = pd.read_csv("group1.csv")
+
     for i in range(len(data)):
         entry = data.iloc[i]
-        andrewid = entry["andrewid"].strip()
-        user = User.objects.create_user(username = andrewid, password =andrewid)
-        user.save()
-        participant = Participant(user = user)
-        participant.save()
-        print(andrewid)
+        andrewid = str(entry["andrewid"]).strip()
+
+        user, user_created = User.objects.get_or_create(username=andrewid)
+        if user_created:
+            user.set_password(andrewid)
+            user.save()
+
+        participant, part_created = Participant.objects.get_or_create(user=user)
+
     successmessage = "group1 registered"
-    return successmessage   
+    return successmessage
+
 
 def importsections():
     for i in range(len(section_names)):
@@ -877,14 +913,23 @@ def import_questions_section4():
     return successmessage
 
 
+# def register_new_user():
+#     name = "jesses1"
+#     user = User.objects.create_user(username = name, password =name)
+#     user.save()
+#     participant = Participant(user = user)
+#     participant.save()
+#     print ("new user registered")
 
 def register_new_user():
     name = "jesses1"
-    user = User.objects.create_user(username = name, password =name)
-    user.save()
-    participant = Participant(user = user)
-    participant.save()
-    print ("new user registered")
+
+    user, user_created = User.objects.get_or_create(username=name)
+    if user_created:
+        user.set_password(name)
+        user.save()
+
+    participant, part_created = Participant.objects.get_or_create(user=user)
     
 def startup():
     print (batchregister())
