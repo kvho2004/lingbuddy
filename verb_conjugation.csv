@@ -1,0 +1,31 @@
+﻿sentence,verb,verb_type,context,tense_broad,tense_specific,subject,subject_type,formality,gender_matter,gender,plurality,conjugation
+Elles [blank] à la chorale du village.,chanter,er,You are describing an after school activity friends of yours participate in.,present,-1,Elles,Third person,-1,no,-1,plural,chantent
+Mon mari et moi [blank] dans des entreprises technologiques.,investir,ir,You are talking about your stock market portfolio.,present,-1,Mon mari et moi,First person,-1,no,-1,plural,investissons
+Elles [blank] à la chorale du village.,chanter,er,You are describing what your cousins did every winter growing up.,past,imparfait (imperfect),Elles,Third person,-1,no,-1,plural,chantaient
+La chorale du village [blank] hier soir.,chanter,er,You are talking about town activities.,past,passé composé (present perfect),La chorale du village,Third person,-1,yes,feminine,plural,a chanté
+Je [blank] de l'eau,venir,irregular,You just got back from the water fountain.,past,passé récent (recent past),Je,First person,-1,no,-1,singular,viens de boire
+Tu [blank] un hamburger.,venir,irregular,You are responding to someone at your table remarking they're still starving.,past,passé récent (recent past),Tu,Second person,Informal,no,-1,singular,viens de manger
+Mes frères [blank] notre téléviseur ce matin.,vendre,re,It is the afternoon and you are discussing selling TVs.,past,passé composé (present perfect),Mes frères,Third person,-1,yes,masculine,plural,ont vendu
+Vous [blank] les termes clés.,définir,ir,You are reminding your professor what she was doing before an interruption.,past,imparfait (imperfect),Vous,Second person,Formal,no,-1,singular,définissiez
+"Si tu viens, je [blank] des crêpes.",faire,irregular,You are trying to convince a friend to come over.,future,futur simple (the simple future),Je,First person,-1,no,-1,singular,ferai
+Je crois en toi. [blank] le projet ce soir.,finir,ir,You are trying to hype someone up and motivate them.,future,futur simple (the simple future),Tu,Second person,Informal,no,-1,singular,finiras
+"J’ai faim, je [blank].",aller,irregular,You are talking to a friend.,future,futur proche(the near future),Je,First person,-1,no,-1,singular,vais manger
+[blank] les résultats ?,aller,irregular,You are asking a coach what they plan to do.,future,futur proche(the near future),Vous,Second person,Formal,no,-1,singular,Allez-vous publier
+Les enfants [blank] dans le jardin après l’école.,jouer,er,You are describing your neighbors’ daily routine.,present,-1,Les enfants,Third person,-1,no,-1,plural,jouent
+Ma sœur [blank] toujours la vérité.,dire,irregular,You are talking about family traits.,present,-1,Ma soeur,Third person,-1,yes,feminine,singular,dit
+Nous [blank] des cartes postales hier.,écrire,irregular,You are recounting yesterday’s activities.,past,passé composé,Nous,First person,-1,no,-1,plural,avons écrit
+Elles [blank] souvent à la bibliothèque quand elles étaient petites.,lire,irregular,You are describing old habits.,past,imparfait,Elles,Third person,-1,yes,feminine,plural,lisaient
+Tu [blank] mieux si tu te reposes.,aller,irregular,You are giving advice to a friend.,future,futur simple,Tu,Second person,informal,no,-1,singular,iras
+Les étudiantes [blank] leur présentation demain matin. ,préparer,er,You are talking to a classmate about schedules.,future,futur proche,Les étudiantes,Third person,-1,yes,feminine ,plural,vont préparer
+Je [blank] une lettre au directeur.,envoyer,er,You are being formal in a school or work context.,present,-1,Je,First person,-1,no,-1,singular,envoie
+Mon père [blank] beaucoup pendant sa jeunesse.,voyager,er,You are telling a story about family history.,past,imparfait,Mon père,Third person,-1,yes,masculine,singular,voyageait
+Vous [blank] cette robe ?,choisir,ir,You are speaking politely to a customer.,present,-1,Vous,Second person,Formal,yes,feminine ,singular,choisissez
+Mes tantes [blank] une maison au bord de la mer. ,acheter,er,You are sharing a family plan.,future,futur simple,Mes tantes,Third person,-1,yes,feminine ,plural,achèteront
+On [blank] la porte quand on est partis.,fermer,er,You are recounting a recent event.,past,passé composé,On,Third person,-1,no,-1,singular,a fermé
+"Eux, ils [blank] dès qu’ils auront fini le travail.",partir,irregular,You are discussing colleagues' schedules.,future,futur simple,ils,Third person,-1,yes,masculine ,plural,partiront
+Je [blank] souvent mes grands-parents quand j’étais jeune.,rendre visite,irregular,You are reminiscing about childhood.,past,imparfait,Je,First person,-1,no,-1,singular,rendais visite
+Les joueurs [blank] du match la semaine prochaine.,parler,er,You are discussing future press interviews.,future,futur proche,Les joueurs,Third person,-1,yes,masculine,plural,vont parler
+La directrice [blank] tous les dossiers ce matin.,ouvrir,irregular,You are reporting on administrative tasks.,past,passé composé,La directrice ,third person,-1,yes,feminine,singular,a ouvert
+Nous [blank] le musée si tu veux.,visiter,er,You are proposing an afternoon plan.,future,futur simple,nous,First person,-1,no,-1,plural,visiterons
+Le médecin [blank] son patient avant l’opération.,examiner,er,You are describing a standard procedure.,present,-1,Le médecin,third person,-1,yes,masculine ,singular,examine
+Mes amies et moi [blank] toutes ensemble ce week-end.,sortir,irregular,You are describing weekend plans.,future,futur proche,Mes amies et moi,First person,-1,yes,feminine,plural,allons sortir

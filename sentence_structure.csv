@@ -1,0 +1,28 @@
+﻿sentence,context,type,subject,noun,gender,plurality,answer
+Est-ce que tu vois [blank] voiture noire?,You are referencing a specific.,article,,voiture,feminine,singular,la
+Est-ce que tu vois [blank] girafe?,You are not looking for a specific animal.,article,,girafe,feminine,singular,une
+Elle a deux foulards [blank].,You are talking about blue scarves.,adjective,,foulards,masculine,plural,bleus
+J'ai trois [blank] plantes et une grande.,You are discussing how many small and large plants you have.,adjective,,plantes,feminine,plural,petites
+Élise est une excellente photographe. J'adore [blank] photos.,You are talking about your friend Élise.,pronoun,,Élise,feminine,plural,ses
+Max a perdu [blank] livre.,You are talking about your friend Max.,pronoun,,Max,masculine,singular,son
+Je dois faire [blank] devoirs.,You have multiple assignments to do tonight.,pronoun,,Je,-1,plural,mes
+"Tu peux fermer [blank] fenêtre, s’il te plaît ?",A specific window is open,article,,fenêtre,feminine,singular,la
+Ils cherchent [blank] appartement à Paris.,"Any apartment, not a specific one.",article,,appartement,masculine,singular,un
+J’ai acheté [blank] pommes au marché.,A specific batch of apples you bought.,article,,pommes,feminine,plural,les
+Nous visitons [blank] musée aujourd’hui.,A particular museum planned.,article,,musée,masculine,singular,le
+Elle veut adopter [blank] chat.,"Any cat, not yet chosen.",article,,chat,masculine,singular,un
+Il porte une chemise [blank].,Talking about a red shirt he’s wearing.,adjective,,chemise,feminine,singular,rouge
+J’adore ces jardins [blank].,Talking about beautiful gardens.,adjective,,jardins,masculine,plural,beaux
+Elle a acheté une robe [blank].,Talking about a long dress.,adjective,,robe,feminine,singular,longue
+Nous cherchons des solutions [blank].,Discussing practical solutions.,adjective,,solutions,feminine,plural,pratiques
+Ils ont un chien très [blank].,Talking about a smart/intelligent dog.,adjective,,chien,masculine,singular,intelligent
+Je n’ai pas vu [blank] clés.,Your own keys are missing.,pronoun,Je,clés,feminine,plural,mes
+Tu peux me prêter [blank] chargeur ?,Asking for your friend’s charger.,pronoun,Tu,chargeur,masculine,singular,ton
+Claire adore [blank] grand-mère.,Talking about Claire’s grandmother.,pronoun,Claire,grand-mère,feminine,singular,sa
+Lucas a fini [blank] exercices.,Talking about Lucas’s homework set.,pronoun,Lucas,exercices,masculine,plural,ses
+Nous attendons [blank] amis.,Talking about our friends that we expect.,pronoun,Nous,amis,masculine,plural,nos
+Ils ont vendu [blank] voiture.,Talking about their car.,pronoun,Ils,voiture,feminine,singular,leur
+Vous pouvez choisir [blank] dessert.,You can pick your dessert.,pronoun,Vous,dessert,masculine,singular,votre
+J’aime beaucoup [blank] chanson-là.,Referring to that specific song.,pronoun,- ,chanson,feminine,singular,cette
+Regarde [blank] oiseaux-là !,Pointing at those specific birds.,pronoun,- ,oiseaux,masculine,plural,ces
+Tu te souviens de [blank] moment ?,Referring to that particular moment.,pronoun,- ,moment,masculine,singular,ce
