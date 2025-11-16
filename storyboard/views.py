@@ -26,12 +26,75 @@ from os import listdir
 from django.core.files import File
 import re, math
 from collections import Counter
+from openai import OpenAI
 
 
 section_names = ['Section 1 (Design Storyboards Based on User Needs)', 'Section 2 (Write Lead Questions)', 'Section 3 (Safe and Risky Storyboards)', 'Section 4 (Is This a Good Storyboard?)',  ]
 # Section 3 (Perform Your Own Error Analysis)'
 totalnum_list = [6, 5, 5 ,4]
 numberofquestions_list = [6, 5, 5 ,4]
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))  
+
+SCENARIO_EVAL_SYSTEM_PROMPT = """
+You are a helpful French tutor chatbot for BEGINNER students (A1–A2 level).
+Your job has TWO parts:
+
+1) Chat naturally in SIMPLE French in the given scenario (ordering at a café or meeting a new friend).
+2) Evaluate the student's most recent message using a step-by-step internal reasoning process, but DO NOT show your reasoning.
+
+Your internal reasoning (NOT in the output) must follow these steps:
+- Understand the situation and time (present / past / future).
+- Identify the subject (who is speaking, to whom, singular/plural, formal/informal).
+- Check if the verb tense matches the time.
+- Check subject–verb agreement.
+- Check the word order and sentence structure.
+- Check if the tone / formality fits the situation.
+
+Based on that internal analysis, you MUST output ONLY a single JSON object with these keys:
+
+- "reply_fr": your next message in French, using simple vocabulary.
+- "feedback_en": short feedback in English about the student's LAST message (1–2 sentences).
+- "error_category": one of:
+    "none",
+    "verb_conjugation",
+    "verb_tense",
+    "sentence_structure",
+    "subject_verb_agreement",
+    "formality_register",
+    "vocabulary_choice",
+    "multiple"
+- "cognitive_step": the FIRST step where the error appears, one of:
+    "time_reference",
+    "subject_identification",
+    "verb_tense_selection",
+    "subject_verb_agreement",
+    "sentence_order",
+    "tone_formality",
+    "none"
+- "is_correct": true or false (whether the student's message is acceptable for a beginner in this context).
+
+RULES:
+- Always answer in beginner-friendly French for "reply_fr".
+- "feedback_en" must be simple and supportive, and refer to the error_category.
+- NEVER include explanations of your reasoning steps or any chain-of-thought in the JSON.
+- DO NOT output anything that is not valid JSON.
+"""
+SCENARIO_SUMMARY_SYSTEM_PROMPT = """
+You are a French tutor summarizing a short practice session.
+You receive a list of turns with fields:
+- role (student or tutor),
+- message_fr,
+- feedback_en,
+- error_category,
+- cognitive_step,
+- is_correct.
+
+Write a short summary in English for the student:
+1) 2–3 sentences about what they did well.
+2) 2–4 bullet points of specific things to improve, referencing error categories if helpful.
+
+Be encouraging and concrete. Do NOT output JSON.
+"""
 
 @ensure_csrf_cookie
 @login_required
@@ -162,6 +225,129 @@ def section4(request):
             response = Response(student = user, trial = trial, question = question, section = section)
             response.save()
         return redirect(reverse('section4_questionpage', args = (0,)))
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+
+@login_required
+@csrf_exempt   # if you prefer CSRF via header, you can drop this and use the token
+def section4_chat(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=400)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    scenario = data.get("scenario")
+    student_message = data.get("message")
+    history = data.get("history", [])  # optional: list of past turns (you can use later)
+
+    if not scenario or not student_message:
+        return JsonResponse({"error": "scenario and message are required"}, status=400)
+
+    # Simple safety: keep scenario to known values
+    if scenario not in ["cafe", "new_friend"]:
+        return JsonResponse({"error": "Unknown scenario"}, status=400)
+
+    # Build a short natural-language scenario description for the model
+    if scenario == "cafe":
+        scenario_description = (
+            "Ordering food and drinks at a French café. "
+            "The learner is the customer, talking to a server."
+        )
+    else:
+        scenario_description = (
+            "Introducing yourself to a new friend. "
+            "The learner is meeting someone for the first time."
+        )
+
+    # You can optionally include a compact history, but for now we focus on the latest turn.
+    user_payload = {
+        "scenario": scenario,
+        "scenario_description": scenario_description,
+        "student_level": "beginner",
+        "student_message": student_message,
+    }
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4.1-mini",  # or gpt-4o-mini / gpt-4.1 if you want stronger eval
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": SCENARIO_EVAL_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": json.dumps(user_payload, ensure_ascii=False),
+                },
+            ],
+        )
+
+        raw = completion.choices[0].message.content
+        result = json.loads(raw)
+
+        # Light post-processing / defaults
+        reply_fr = result.get("reply_fr", "")
+        feedback_en = result.get("feedback_en", "")
+        error_category = result.get("error_category", "none")
+        cognitive_step = result.get("cognitive_step", "none")
+        is_correct = bool(result.get("is_correct", False))
+
+        return JsonResponse(
+            {
+                "reply_fr": reply_fr,
+                "feedback_en": feedback_en,
+                "error_category": error_category,
+                "cognitive_step": cognitive_step,
+                "is_correct": is_correct,
+            }
+        )
+
+    except Exception as e:
+        # You might want to log e in real code
+        return JsonResponse(
+            {"error": "Something went wrong talking to the AI."},
+            status=500,
+        )
+
+
+@login_required
+@csrf_exempt
+def section4_summary(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=400)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    turns = data.get("turns", [])
+    if not isinstance(turns, list) or len(turns) == 0:
+        return JsonResponse({"error": "turns list required"}, status=400)
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": SCENARIO_SUMMARY_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": json.dumps(turns, ensure_ascii=False),
+                },
+            ],
+        )
+
+        summary_text = completion.choices[0].message.content
+        return JsonResponse({"summary": summary_text})
+
+    except Exception:
+        return JsonResponse(
+            {"error": "Something went wrong generating the summary."},
+            status=500,
+        )
 
 
 @login_required

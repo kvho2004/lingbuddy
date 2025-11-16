@@ -1,7 +1,8 @@
 from django.conf.urls import include
 from django.contrib.auth import views as auth_views
 from storyboard import views as storyboard_views
-
+from django.urls import path
+from storyboard import views
 from django.contrib import admin
 import django.contrib.auth.urls
 from django.urls import include, path,re_path
@@ -29,6 +30,8 @@ urlpatterns  =[
     re_path(r'^section2$', storyboard_views.section2, name = 'section2'),
     re_path(r'^section3$', storyboard_views.section3, name = 'section3'),
     re_path(r'^section4$', storyboard_views.section4, name = 'section4'),
+    path('section4/chat/', views.section4_chat, name='section4_chat'),
+    path('section4/summary/', views.section4_summary, name='section4_summary'),
 
 
     re_path(r'^section1_questionpage/(?P<id>\d+)$', storyboard_views.section1_questionpage, name = 'section1_questionpage'),
