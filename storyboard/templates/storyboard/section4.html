@@ -1,15 +1,238 @@
 {% extends "storyboard/base.html" %}
-
 {% load static %}
 
-                    {% block user-info %}
-                    <div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">{{user.username}}</div>
-                    {% endblock %}
-{% block content %}
-<div class = "col-sm-12">
-   <button>Scenario 1</button>
-   <button>Scenario 2</button>
-   <button>Scenario 3</button>
-   <p>Chatbox will go here like from a2</p>
+{% block user-info %}
+<div style="color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    {{ user.username }}
 </div>
+{% endblock %}
+
+{% block content %}
+<div class="col-sm-12" style="max-width: 900px; margin: 0 auto; color: #000000;">
+
+    <h2>Section 4 – Scenario-Based French Chatbot</h2>
+    <p>
+        Here's your chance to practice simple french in real-life situations! 
+    </p>
+    <p>
+      Choose a scenario, chat with the tutor,
+      and get immediate feedback on verb conjugation, sentence structure, and formality.
+      At the end, you’ll see a brief summary of what you did well and what to improve.
+    </p>
+
+    <!-- Scenario Selector -->
+    <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button id="btn-cafe" class="btn btn-primary">Scenario 1: Café</button>
+        <button id="btn-friend" class="btn btn-default">Scenario 2: New Friend</button>
+    </div>
+
+    <p id="scenario-description">
+        You are at a café in France. You want to order a drink and something to eat.
+    </p>
+
+    <!-- Chat Box -->
+    <div id="chat-box"
+         style="background:#f2e6bc; border-radius:6px; padding:15px; height:350px; overflow-y:auto; margin-top:10px;">
+        <!-- Messages will be injected here -->
+        <div class="message bot">
+            <strong>Tuteur:</strong> Bonjour ! Que voulez-vous commander aujourd’hui ?
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div style="margin-top: 10px;">
+        <textarea id="user-input" class="form-control" rows="2"
+                  placeholder="Write your sentence in French here..."></textarea>
+        <div style="margin-top: 8px; display: flex; gap: 10px;">
+            <button id="send-btn" class="btn btn-success">Send</button>
+            <button id="end-session-btn" class="btn btn-info">Terminate Session</button>
+        </div>
+    </div>
+
+    <!-- Feedback Panel -->
+    <div id="feedback-panel"
+         style="margin-top: 15px; padding: 10px; background:hsl(115, 60%, 82%); border-radius:6px; font-size: 0.95em; display:none;">
+        <strong>Feedback:</strong>
+        <div id="feedback-text"></div>
+        <div id="feedback-tags" style="margin-top: 5px; font-style: italic; font-size:0.9em;"></div>
+    </div>
+
+    <!-- Summary Panel -->
+    <div id="summary-panel"
+         style="margin-top: 20px; padding: 10px; background:#1d2b2b; border-radius:6px; display:none;">
+        <h4>Session Summary</h4>
+        <div id="summary-text"></div>
+    </div>
+</div>
+
+<script>
+    // --- State ---
+    let currentScenario = "cafe";  // "cafe" or "new_friend"
+    let turns = [];  // store simplified history for summary
+
+    function appendMessage(role, text, feedback) {
+        const chatBox = document.getElementById("chat-box");
+        const div = document.createElement("div");
+        div.classList.add("message");
+        div.classList.add(role === "student" ? "student" : "bot");
+        div.style.marginBottom = "6px";
+
+        if (role === "student") {
+            div.innerHTML = "<strong>Vous:</strong> " + text;
+        } else {
+            div.innerHTML = "<strong>Tuteur:</strong> " + text;
+        }
+
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        if (feedback) {
+            const fbDiv = document.createElement("div");
+            fbDiv.style.fontSize = "0.9em";
+            fbDiv.style.opacity = "0.9";
+            fbDiv.style.marginLeft = "10px";
+            fbDiv.innerText = feedback;
+            chatBox.appendChild(fbDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+
+    function setScenario(s) {
+        currentScenario = s;
+        const desc = document.getElementById("scenario-description");
+        const chatBox = document.getElementById("chat-box");
+        chatBox.innerHTML = ""; // clear chat
+
+        if (s === "cafe") {
+            desc.innerText = "You are at a café in France. You want to order a drink and something to eat.";
+            appendMessage("bot", "Bonjour ! Que voulez-vous commander aujourd’hui ?");
+        } else {
+            desc.innerText = "You are meeting a new friend for the first time. Introduce yourself.";
+            appendMessage("bot", "Salut ! Comment tu t’appelles?");
+        }
+        // Reset state for new session
+        turns = [];
+        document.getElementById("summary-panel").style.display = "none";
+    }
+
+    async function sendMessage() {
+        const textarea = document.getElementById("user-input");
+        const msg = textarea.value.trim();
+        if (!msg) return;
+
+        appendMessage("student", msg);
+        textarea.value = "";
+
+        // Hide old feedback
+        document.getElementById("feedback-panel").style.display = "none";
+
+        try {
+            const resp = await fetch("{% url 'section4_chat' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    scenario: currentScenario,
+                    message: msg,
+                })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) {
+                console.error(data);
+                appendMessage("bot", "Oups, il y a eu un problème côté serveur.");
+                return;
+            }
+
+            appendMessage("bot", data.reply_fr);
+
+            // Show feedback panel
+            const fbPanel = document.getElementById("feedback-panel");
+            const fbText = document.getElementById("feedback-text");
+            const fbTags = document.getElementById("feedback-tags");
+
+            fbText.innerText = data.feedback_en || "";
+            fbTags.innerText = (data.error_category && data.error_category !== "none")
+                ? "Error category: " + data.error_category + " | Step: " + data.cognitive_step
+                : "Looks good for your level!";
+            fbPanel.style.display = "block";
+
+            turns.push({
+                role: "student",
+                message_fr: msg,
+                feedback_en: data.feedback_en,
+                error_category: data.error_category,
+                cognitive_step: data.cognitive_step,
+                is_correct: data.is_correct
+            });
+            turns.push({
+                role: "tutor",
+                message_fr: data.reply_fr,
+                feedback_en: "",
+                error_category: "none",
+                cognitive_step: "none",
+                is_correct: true
+            });
+
+        } catch (e) {
+            console.error(e);
+            appendMessage("bot", "Oups, je ne peux pas répondre maintenant.");
+        }
+    }
+
+    async function endSession() {
+        if (turns.length === 0) return;
+
+        try {
+            const resp = await fetch("{% url 'section4_summary' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ turns: turns })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) {
+                console.error(data);
+                return;
+            }
+
+            const summaryPanel = document.getElementById("summary-panel");
+            const summaryText = document.getElementById("summary-text");
+            summaryText.innerHTML = data.summary;
+            summaryPanel.style.display = "block";
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // --- Event wiring ---
+    document.getElementById("btn-cafe").addEventListener("click", function() {
+        setScenario("cafe");
+        this.className = "btn btn-primary";
+        document.getElementById("btn-friend").className = "btn btn-default";
+    });
+
+    document.getElementById("btn-friend").addEventListener("click", function() {
+        setScenario("new_friend");
+        this.className = "btn btn-primary";
+        document.getElementById("btn-cafe").className = "btn btn-default";
+    });
+
+    document.getElementById("send-btn").addEventListener("click", sendMessage);
+    document.getElementById("end-session-btn").addEventListener("click", endSession);
+
+    // Allow Enter to send (Shift+Enter for newline)
+    document.getElementById("user-input").addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Initialize default scenario
+    setScenario("cafe");
+</script>
 {% endblock %}
