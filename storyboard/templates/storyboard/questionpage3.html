@@ -8,71 +8,26 @@
 {% endblock %}
 
 {% block content %}
-
-    <div class = "col-sm-12 backgroundinfo">
-<p>In this activity, imagine your peers are designing Storyboards to improve users' transportation experience around CMU. They first identified a list of user needs and then designed Storyboards to address the needs. For each user need, they created three storyboards that are "safe", "riskier", and "out there" ideas. Your task is to evaluate whether each set of the three storyboards follows the <strong>progression of increasing riskiness.</strong></p>
-
-
-
-
-    </div>
-
-
-    <div class = "col-sm-12">
-    <h1>Question {{pageid|add:1}} out of {{section.numberofquestions}}</h1>
-    </div>
     
     <form class = "form-horizontal" method = "post" action = "{% url 'nextpage3' %}">
-    <div class = "col-sm-12">
-     <br><br>
-    <p><strong>This set of Storyboards addresses the following user need:</strong></p>
-    {{question.question_stem|safe}}
-    <br><br>
-
-
-
-    <div class = "col-sm-12 crop">
-    <p>Safe design:</p><br>
-    <img src="/static/storyboard/images/{{image0}}"></img>
-    <br>
-    <br>
-
-    </div>
-
-    <div class = "col-sm-12 crop">
-    <p>Riskier design:</p><br>
-    <img src="/static/storyboard/images/{{image1}}"></img>
-    <br>
-    <br>
-
-    </div>
-
-    <div class = "col-sm-12 crop">
-    <p>"Out there" design:</p><br>
-    <img src="/static/storyboard/images/{{image2}}"></img>
-    <br>
-    <br>
-
-    </div>
-
-    
-    </div>
-    <div class = "col-sm-12">
-    <h4><strong>Does this set of three storyboards follow the progression of safe, riskier, and "out there" ideas?</strong></h4>
-    </div>
-    <div class = "col-sm-12">
-    {{form.response}}
-    </div>
-
-    <div class = "col-sm-12" id = "feedbackmessage">
-        {% if attempted %}
-        {{feedbackmessage|safe}}
-        {% endif %}
-    </div>
-    <div class = "col-sm-12">
-
-    {{form.justification}}
-    </div>
+        <div class = "col-sm-12">
+            <br><br>
+            <h4><strong>{{question.sentence}}</strong></h4>
+            <br><br>
+        
+            {% if forms %}
+            {% for form in forms%}
+            <div class = "col-sm-12">
+            <h2><strong>{{form.response.label_tag}}</strong></h2>
+            </div>
+            <br>
+        
+            <div class = "col-sm-12">
+                {{form.response}}
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
 
     <div class = "col-sm-12">
     <input type="hidden" name="pageid" id = "pageid" value = "{{pageid}}">

@@ -88,12 +88,25 @@ class StructureQuestion(models.Model):
     sentence = models.CharField(max_length = 300000, blank = True)
     context = models.CharField(max_length = 300000, blank = True)
     type = models.CharField(max_length = 300000, blank = True)
+    subject_matter = models.CharField(max_length = 300000, blank = True)
     subject = models.CharField(max_length = 300000, blank = True)
     noun = models.CharField(max_length = 300000, blank = True)
     gender = models.CharField(max_length = 300000, blank = True)
     plurality = models.CharField(max_length = 300000, blank = True)
     answer = models.CharField(max_length = 300000, blank = True)
-    correct = models.BooleanField(blank = True, default = False)
+
+class StructureResponse(models.Model):
+    id = models.PositiveIntegerField(default = 0, blank = True, primary_key=True)
+    student = models.ForeignKey(User, default = None, on_delete=models.CASCADE)
+    question = models.ForeignKey(StructureQuestion, default = None, on_delete=models.CASCADE)
+    response = models.PositiveIntegerField(blank = True, default= 0)
+    ans = models.CharField(max_length = 3000, blank = True)
+    subject_matter = models.CharField(max_length = 300000, blank = True)
+    subject = models.CharField(max_length = 300000, blank = True)
+    noun = models.CharField(max_length = 300000, blank = True)
+    gender = models.CharField(max_length = 300000, blank = True)
+    plurality = models.CharField(max_length = 300000, blank = True)
+    answer = models.CharField(max_length = 300000, blank = True)
 
 class Question(models.Model):
     section = models.ForeignKey(Section, default = None ,on_delete=models.CASCADE)

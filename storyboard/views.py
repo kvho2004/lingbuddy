@@ -100,6 +100,7 @@ Be encouraging and concrete. Do NOT output JSON.
 @ensure_csrf_cookie
 @login_required
 def home(request):
+    print("here")
     context = {}
     user = request.user
     participant = get_object_or_404(Participant, user=  user)
@@ -177,26 +178,27 @@ def section3(request):
     context = {}
     user = request.user
     section = get_object_or_404(Section, id= 3)
-    progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    progress = progress_list[0]
+    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
+    # progress = progress_list[0]
 
     if request.method == "GET":
-        if progress.trial == 0:
-            context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
-        else:
-            progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
-            score= progress_highestscore.score
-            context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."
-        return render(request, 'storyboard/section3.html', context)
+        return render(request, 'storyboard/section3.html')
+        # if progress.trial == 0:
+        #     context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
+        # else:
+        #     progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
+        #     score= progress_highestscore.score
+        #     context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."
+        # return render(request, 'storyboard/section3.html', context)
 
     else:    
-        trial = progress.trial+1
-        progress = Progress(student = user, section  = section, trial = trial, score = 0)
-        progress.save()
+        # trial = progress.trial+1
+        # progress = Progress(student = user, section  = section, trial = trial, score = 0)
+        # progress.save()
         number_of_questions = section.numberofquestions
         for i in range(number_of_questions):
-            question = Question.objects.filter(section = section).order_by("id")[i]
-            response = Response(student = user, trial = trial, question = question, section = section)
+            question = StructureQuestion.objects.filter(id=i)[0]
+            response = StructureResponse(id = i, student = user, question = question)
             response.save()
         return redirect(reverse('section3_questionpage', args = (0,)))
 
@@ -424,6 +426,7 @@ def get_form_tense_specific(question_obj, ans):
     return QuestionFormMC(question=question, optionlist=options)
 
 def get_form_subject(question_obj, ans):
+    if ans == "-1": return "N/A"
     question = "What is the subject of the above sentence?"
     sentence = question_obj.sentence
     stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
@@ -467,7 +470,6 @@ def get_form_conjugation(question_obj, ans):
     return AnswerForm(question=question)
 
 
-
 @login_required
 def section2_questionpage(request, id):
 
@@ -509,7 +511,27 @@ def section2_questionpage(request, id):
     context['section'] = section
 
     return render(request, 'storyboard/questionpage2.html', context)
-    
+
+def get_form_noun(question_obj, ans):
+    question = "What noun is being reffered to/modified by the missing word in the above sentence?"
+    sentence = question_obj.sentence
+    stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
+    words = stripped_sent.split(" ")
+    options = [ans]
+    for i in range(3):
+        random_index = random.randrange(len(words))
+        word = words.pop(random_index)
+        options.append(word)
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_subject_matter(question_obj, ans):
+    question = "Does the missing word also need to be consistent with the subject of the sentence?"
+    options =  ["Yes", "No"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_answer(question_obj, ans):
+    question = "Fill in the blank with the correct form of the missing word."
+    return AnswerForm(question=question)
 
 @login_required
 def section3_questionpage(request, id):
@@ -519,49 +541,35 @@ def section3_questionpage(request, id):
     context = {}
 
 
-    progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    progress = progress_list[0]
-    trial = progress.trial
+    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
+    # progress = progress_list[0]
+    # trial = progress.trial
 
-    question = Question.objects.filter(section = section).order_by("id")[int(id)]
-    response = Response.objects.filter(student= user).filter(trial = trial).filter(section = section).filter(question = question)[0]
+    question = get_object_or_404(StructureQuestion, id = int(id))
+    question.sentence = question.sentence.replace("[blank]", "____________")
+    question.save()
 
-    optionlist = []
-    optionlist.append(question.option1)
-    optionlist.append(question.option2)
-
-    if response.response!=0:
-        form = QuestionForm(instance = response, optionlist = optionlist)
-        attempted = True
-        context["feedbackmessage"] = response.feedbackmessage
-    else:
-        form = QuestionForm(optionlist = optionlist)
-        attempted = False
-
+    questions = {
+        "noun": get_form_noun, 
+        'subject': get_form_subject_matter, 
+        'subject': get_form_subject, 
+        "gender": get_form_gender, 
+        "plurality": get_form_pluraility, 
+        "answer": get_form_answer
+    }
+    fields = question._meta.get_fields()
+    forms = []
+    for field in fields:
+        if field.name in questions:
+            field_ans = getattr(question, field.name)
+            form = questions[field.name](question_obj=question, ans=field_ans)
+            if form != "N/A": forms.append(form)
 
     context['user'] = user
     context['question'] = question
-    context['form'] = form
+    context['forms'] = forms
     context['pageid'] = id
     context['section'] = section
-    context['attempted'] = attempted
-    context["feedbackmessage"] = response.feedbackmessage
-
-    image_v= question.img
-    imagelist =[]
-
-    if ";" in image_v:
-        images = image_v.split(";")
-        for image in images:
-            imagelist.append(image.strip())
-        context["imagelist"] = imagelist
-
-    elif image_v!="None":
-        imagelist.append(image_v.strip())
-        context["imagelist"] = imagelist
-    context["image0"] = imagelist[0]
-    context["image1"] = imagelist[1]
-    context["image2"] = imagelist[2]
 
     return render(request, 'storyboard/questionpage3.html', context)
 
@@ -1054,7 +1062,7 @@ def batchregister_group1():
 
 
 def importsections():
-    for i in [2, 3, 4]:
+    for i in [1, 2, 3, 4]:
         section = Section(sectionname = section_names[i-1], numberofquestions = numberofquestions_list[i-1], totalnum = totalnum_list[i-1])
         section.save()
         print(f"made section {i}")
