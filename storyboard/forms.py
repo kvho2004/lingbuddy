@@ -44,6 +44,33 @@ class QuestionForm(forms.ModelForm):
         justification = self.cleaned_data["justification"]
         return justification
 
+class QuestionFormMC(forms.ModelForm):
+    # response = forms.ChoiceField(choices = [(1,"1"),(2,"2"),(3,"3")], widget = forms.RadioSelect(), required = True)
+    class Meta:
+        model = VerbResponse
+        fields = ('question', 'response')    
+    def __init__(self, *args, **kwargs):
+        question = kwargs.pop('question')
+        optionlist = kwargs.pop('optionlist')
+        super(QuestionFormMC, self).__init__(*args, **kwargs)
+        self.fields['response'] =forms.ChoiceField(label=question, choices = getchoices(optionlist), widget  = forms.RadioSelect(), required = True)
+    def clean_response(self):
+        response = self.cleaned_data["response"]
+        return response
+
+class AnswerForm(forms.ModelForm):
+    # response = forms.ChoiceField(choices = [(1,"1"),(2,"2"),(3,"3")], widget = forms.RadioSelect(), required = True)
+    class Meta:
+        model = VerbResponse
+        fields = ('question', 'response')    
+    def __init__(self, *args, **kwargs):
+        question = kwargs.pop('question')
+        super(AnswerForm, self).__init__(*args, **kwargs)
+        self.fields['response'] =forms.CharField(label=question, max_length = 500, widget = forms.Textarea(attrs ={'class':'textinput', 'placeholder':'Type final answer here...'}), required = True)
+    def clean_response(self):
+        response = self.cleaned_data["response"]
+        return response
+
 
 
 class ScreenshotForm(forms.ModelForm):

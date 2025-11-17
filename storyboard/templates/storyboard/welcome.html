@@ -14,9 +14,11 @@ This assignment is composed of four sections. Please click on the left navigatio
 <div class = "col-sm-12">
     <h1>Progress</h1>
     <p style = "color: green;">
+    {% if displaylist %}
     {% for item in displaylist %}
     <h4><strong>{{item.section.sectionname}} Score : </strong><span><label style=" color:green;"> {{item.score}}</label> / {{item.section.numberofquestions}} </span></h4>
     {% endfor %}
+    {% endif %}
     </p>
 
 </div>

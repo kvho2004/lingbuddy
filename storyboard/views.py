@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 import pandas as pd
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, get_list_or_404
 # from django.core.urlresolvers import reverse
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -27,9 +27,10 @@ from django.core.files import File
 import re, math
 from collections import Counter
 from openai import OpenAI
+import string
 
 
-section_names = ['Section 1 (Design Storyboards Based on User Needs)', 'Section 2 (Write Lead Questions)', 'Section 3 (Safe and Risky Storyboards)', 'Section 4 (Is This a Good Storyboard?)',  ]
+section_names = ['Section 1 (Profile)', 'Verb Conjugation Practice', 'Sentence Structure Practice', 'Chatbot',  ]
 # Section 3 (Perform Your Own Error Analysis)'
 totalnum_list = [6, 5, 5 ,4]
 numberofquestions_list = [6, 5, 5 ,4]
@@ -105,11 +106,11 @@ def home(request):
     displaylist = []
     for i in range(4):
         section = get_object_or_404(Section, id = i+1)
-        progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-score")
-        progress = progress_list[0]
-        displaylist.append(progress)
+    #     progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-score")
+    #     progress = progress_list[0]
+    #     displaylist.append(progress)
 
-    context['displaylist'] = displaylist
+    # context['displaylist'] = displaylist
     context['user'] = user
     print ("showshow")
     return render(request, 'storyboard/welcome.html', context)
@@ -147,26 +148,27 @@ def section2(request):
     context = {}
     user = request.user
     section = get_object_or_404(Section, id= 2)
-    progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    progress = progress_list[0]
+    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
+    # progress = progress_list[0]
 
     if request.method == "GET":
-        if progress.trial == 0:
-            context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
-        else:
-            progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
-            score= progress_highestscore.score
-            context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."        
-        return render(request, 'storyboard/section2.html', context)
+        return render(request, 'storyboard/section2.html')
+    #     if progress.trial == 0:
+    #         context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
+    #     else:
+    #         progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
+    #         score= progress_highestscore.score
+    #         context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."        
+    #     return render(request, 'storyboard/section2.html', context)
         
     else:    
-        trial = progress.trial+1
-        progress = Progress(student = user, section  = section, trial = trial, score = 0)
-        progress.save()
+        # trial = progress.trial+1
+        # progress = Progress(student = user, section  = section, trial = trial, score = 0)
+        # progress.save()
         number_of_questions = section.numberofquestions
         for i in range(number_of_questions):
-            question = Question.objects.filter(section = section).order_by("id")[i]
-            response = Response(student = user, trial = trial, question = question, section = section)
+            question = VerbQuestion.objects.filter(id=i)[0]
+            response = VerbResponse(id = i, student = user, question = question)
             response.save()
         return redirect(reverse('section2_questionpage', args = (0,)))
 
@@ -407,6 +409,64 @@ def section1_questionpage(request, id):
 
     return render(request, 'storyboard/questionpage.html', context)
 
+def get_form_tense_broad(question_obj, ans):
+    question = "What is the tense of the above sentence?"
+    options = ["Past", "Present", "Future"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_tense_specific(question_obj, ans):
+    if ans == "-1": return "N/A"
+    question = "More specifically, what is the tense of the above sentence?"
+    past_options = ["Imparfait (imperfect)", "Passé composé (present perfect)", "Passé récent (Recent past)"]
+    future_options = ["Futur simple (the simple future)", "Futur proche (the near future)"]
+    options = {"Past": past_options, "Future": future_options}
+    options = options[question_obj.tense_broad]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_subject(question_obj, ans):
+    question = "What is the subject of the above sentence?"
+    sentence = question_obj.sentence
+    stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
+    words = stripped_sent.split(" ")
+    options = [ans]
+    for i in range(3):
+        random_index = random.randrange(len(words))
+        word = words.pop(random_index)
+        options.append(word)
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_subject_type(question_obj, ans):
+    question = "In what person are we referring to the subject?"
+    options = ["First person", "Second person", "Third person"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_formality(question_obj, ans):
+    if ans == "-1": return "N/A"
+    question = "Should the subject be referred to formally or informally?"
+    options = ["Formal", "Informal"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_gender_matter(question_obj, ans):
+    question = "Does the gender of the subject matter in the conjugation of the verb?"
+    options =  ["Yes", "No"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_gender(question_obj, ans):
+    if ans == "-1": return "N/A"
+    question = "Is the subject masculine or feminine?"
+    options =  ["Feminine", "Masculine"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_pluraility(question_obj, ans):
+    question = "Is the subject a singular or plural?"
+    options = ["Singular", "Plural"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_conjugation(question_obj, ans):
+    question = "What is the conjugation of the verb in context?"
+    return AnswerForm(question=question)
+
+
 
 @login_required
 def section2_questionpage(request, id):
@@ -415,51 +475,38 @@ def section2_questionpage(request, id):
     section = get_object_or_404(Section, id= 2)
     context = {}
 
+    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
+    # progress = progress_list[0]
+    # trial = progress.trial
 
-    progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    progress = progress_list[0]
-    trial = progress.trial
+    question = get_object_or_404(VerbQuestion, id = int(id))
+    question.sentence = question.sentence.replace("[blank]", "____________")
+    question.save()
 
-    question = Question.objects.filter(section = section).order_by("id")[int(id)]
-    response = Response.objects.filter(student= user).filter(trial = trial).filter(section = section).filter(question = question)[0]
-
-    optionlist = []
-    optionlist.append(question.option1)
-    optionlist.append(question.option2)
-    optionlist.append(question.option3)
-    optionlist.append(question.option4)
-
-  
-
-    if response.response!=0:
-        form = QuestionForm(instance = response, optionlist = optionlist)
-        attempted = True
-        context["feedbackmessage"] = response.feedbackmessage
-    else:
-        form = QuestionForm(optionlist = optionlist)
-        attempted = False
-
+    questions = {
+        'tense_broad': get_form_tense_broad, 
+        'tense_specific': get_form_tense_specific, 
+        'subject': get_form_subject, 
+        "subject_type": get_form_subject_type, 
+        "formality": get_form_formality, 
+        "gender_matter": get_form_gender_matter, 
+        "gender": get_form_gender, 
+        "plurality": get_form_pluraility, 
+        "conjugation": get_form_conjugation
+    }
+    fields = question._meta.get_fields()
+    forms = []
+    for field in fields:
+        if field.name in questions:
+            field_ans = getattr(question, field.name)
+            form = questions[field.name](question_obj=question, ans=field_ans)
+            if form != "N/A": forms.append(form)
 
     context['user'] = user
     context['question'] = question
-    context['form'] = form
+    context['forms'] = forms
     context['pageid'] = id
     context['section'] = section
-    context['attempted'] = attempted
-    context["feedbackmessage"] = response.feedbackmessage
-
-    image_v= question.img
-    imagelist =[]
-
-    if ";" in image_v:
-        images = image_v.split(";")
-        for image in images:
-            imagelist.append(image.strip())
-        context["imagelist"] = imagelist
-
-    elif image_v!="None":
-        imagelist.append(image_v.strip())
-        context["imagelist"] = imagelist
 
     return render(request, 'storyboard/questionpage2.html', context)
     
@@ -604,13 +651,9 @@ def nextpage2(request):
     print ("nextpage")
     print (request.POST)
     user = request.user
-    questionid = int(request.POST['questionid'])
-    sectionid = int(request.POST['sectionid'])
-    print("section:")
-    print(sectionid)
 
     pageid = int(request.POST['pageid'])
-    question = get_object_or_404(Question, id = questionid)
+    sectionid = int(request.POST['sectionid'])
     section = get_object_or_404(Section, id = sectionid)
 
     progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
@@ -621,14 +664,13 @@ def nextpage2(request):
         progress.save()
         return redirect(reverse('section'+str(section.id)))
     else:
-
-        responses = Response.objects.filter(student =user).filter(question = question).order_by("-updated_at")
-        response = responses[0]
-        response.justification = request.POST['justification']
+        empty_responses = VerbResponse.objects.filter(student =user).filter(correct = False).order_by("-updated_at")
+        response = empty_responses[0]
+        question = response.question
         response.nextquestion_at= timezone.now()
         response.save()
         reversepage = "section2_questionpage"
-        return redirect(reverse(reversepage, args = (str(pageid+1),)))
+        return redirect(reverse(reversepage, args = (str(question.id),)))
 
 
 @login_required
@@ -1012,32 +1054,25 @@ def batchregister_group1():
 
 
 def importsections():
-    for i in range(len(section_names)):
-        section = Section(sectionname = section_names[i], numberofquestions = numberofquestions_list[i], totalnum = totalnum_list[i])
+    for i in [2, 3, 4]:
+        section = Section(sectionname = section_names[i-1], numberofquestions = numberofquestions_list[i-1], totalnum = totalnum_list[i-1])
         section.save()
+        print(f"made section {i}")
     successmessage = "sections imported"
     return successmessage        
 
-def import_questions_section1():
-    data = pd.read_csv("match_board_need.csv", header =0, encoding = "ISO-8859-1")
-    section = get_object_or_404(Section, pk = 1)
-
-    for i in range(len(data)):
-        entry = data.iloc[i]
-        question = Question(img = entry["img"],correctanswer = entry["correct"], option1 = entry["option1"], option2 = entry["option2"], option3=  entry["option3"], option4 = entry["option4"], section = section)
-        question.save()
-
-    successmessage = "section 1 questions imported"
-    return successmessage
-
 
 def import_questions_section2():
-    data = pd.read_csv("match_board_question.csv", header =0, encoding = "ISO-8859-1")
-    section = get_object_or_404(Section, pk = 2)
+    data = pd.read_csv("verb_conjugation.csv", header =0, encoding = "UTF-8-SIG")
+    print(data.columns)
+    section = get_object_or_404(Section, pk=2)
+    section.totalnum = len(data)
+    section.numberofquestions = len(data)
+    section.save()
 
     for i in range(len(data)):
         entry = data.iloc[i]
-        question = Question(question_stem = entry["question_stem"], img = entry["img"], correctanswer = entry["correct"], option1 = entry["option1"], option2 = entry["option2"], option3=  entry["option3"], option4 = entry["option4"], section = section)
+        question = VerbQuestion(id=i, sentence = entry["sentence"], verb = entry["verb"], verb_type = entry["verb_type"], context = entry["context"], tense_broad = entry["tense_broad"], tense_specific=  entry["tense_specific"], subject = entry["subject"], subject_type = entry["subject_type"], formality = entry["formality"], gender_matter = entry["gender_matter"], gender = entry["gender"], plurality = entry["plurality"], conjugation=  entry["conjugation"])
         question.save()
 
     successmessage = "section 2 questions imported"
@@ -1045,31 +1080,18 @@ def import_questions_section2():
 
 
 def import_questions_section3():
-    data = pd.read_csv("match_progression.csv", header =0, encoding = "ISO-8859-1")
-    section = get_object_or_404(Section, pk = 3)
+    data = pd.read_csv("sentence_structure.csv", header =0, encoding = "UTF-8-SIG")
+    section = get_object_or_404(Section, pk=3)
+    section.totalnum = len(data)
+    section.numberofquestions = len(data)
+    section.save()
 
     for i in range(len(data)):
         entry = data.iloc[i]
-        question = Question(question_stem = entry["question_stem"], question_stem_ctn = entry["question_stem_ctn"], img = entry["img"], correctanswer = entry["correct"], option1 = entry["option1"], option2 = entry["option2"],feedback = entry["feedback"], section = section)
+        question = StructureQuestion(id=i, sentence = entry["sentence"], context = entry["context"], type = entry["type"], subject = entry["subject"], noun = entry["noun"], gender = entry["gender"], plurality = entry["plurality"], answer = entry["answer"])
         question.save()
 
     successmessage = "section 3 questions imported"
-    return successmessage
-
-def import_questions_section4():
-    data = pd.read_csv("match_board_feedback.csv", header =0, encoding = "ISO-8859-1")
-    section = get_object_or_404(Section, pk = 4 )
-
-    for i in range(len(data)):
-        entry = data.iloc[i]
-        feedback = entry["feedback"]
-        if pd.isnull(feedback):
-            feedback = ""
-
-        question = Question(question_stem = entry["question_stem"], question_stem_ctn = entry["question_stem_ctn"], img = entry["img"], correctanswer = entry["correct"],option1 = entry["option1"], option2 = entry["option2"],option3 = entry["option3"], option4 = entry["option4"], feedback = feedback, section = section)
-        question.save()
-
-    successmessage = "section 4 questions imported"
     return successmessage
 
 def register_new_user():
@@ -1087,10 +1109,9 @@ def startup():
     print (importsections())
 
 def import_questions():
-    print (import_questions_section1())
     print (import_questions_section2())
     print (import_questions_section3())
-    print (import_questions_section4())
+
 
 def group1():
     print (batchregister_group1())
