@@ -1,0 +1,40 @@
+{% extends "storyboard/nobase.html" %}
+{% block content %}
+
+<h2>Review for This Sentence</h2>
+<p><strong>{{ question.sentence }}</strong></p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Sub-question</th>
+            <th>Your Answer</th>
+            <th>Correct Answer</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in summary_items %}
+        <tr>
+            <td>{{ item.subq_label }}</td>
+            <td>
+                {% if item.is_correct %}
+                    <span style="color:green">{{ item.user_answer }}</span>
+                {% else %}
+                    <span style="color:red">{{ item.user_answer }}</span>
+                {% endif %}
+            </td>
+            <td>{{ item.correct_answer }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_last_question %}
+    <a class="btn main" href="{% url 'section2' %}">Finish Section</a>
+{% else %}
+    <a class="btn main" href="{% url 'section2_questionpage' qid|add:1 0 %}">
+        Next Sentence →
+    </a>
+{% endif %}
+
+{% endblock %}

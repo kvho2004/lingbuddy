@@ -171,7 +171,7 @@ def section2(request):
             question = VerbQuestion.objects.filter(id=i)[0]
             response = VerbResponse(id = i, student = user, question = question)
             response.save()
-        return redirect(reverse('section2_questionpage', args = (0,)))
+        return redirect(reverse('section2_questionpage', args = (0,0)))
 
 @login_required
 def section3(request):
@@ -471,7 +471,7 @@ def get_form_conjugation(question_obj, ans):
 
 
 @login_required
-def section2_questionpage(request, id):
+def section2_questionpage(request, id, step):
 
     user = request.user
     section = get_object_or_404(Section, id= 2)
@@ -481,7 +481,10 @@ def section2_questionpage(request, id):
     # progress = progress_list[0]
     # trial = progress.trial
 
-    question = get_object_or_404(VerbQuestion, id = int(id))
+    id = int(id)
+    step = int(step)
+
+    question = get_object_or_404(VerbQuestion, id = id)
     question.sentence = question.sentence.replace("[blank]", "____________")
     question.save()
 
@@ -496,42 +499,97 @@ def section2_questionpage(request, id):
         "plurality": get_form_pluraility, 
         "conjugation": get_form_conjugation
     }
-    fields = question._meta.get_fields()
-    forms = []
-    for field in fields:
-        if field.name in questions:
-            field_ans = getattr(question, field.name)
-            form = questions[field.name](question_obj=question, ans=field_ans)
-            if form != "N/A": forms.append(form)
+
+    ordered_fields = [
+        'tense_broad', 'tense_specific', 'subject', 'subject_type', 
+        'formality', 'gender_matter', 'gender', 'plurality', 'conjugation'
+    ]
+
+    
+    active_fields = []
+    for field in ordered_fields:
+        field_ans = getattr(question, field)
+        form = questions[field](question_obj=question, ans=field_ans)
+        if form != "N/A":
+            active_fields.append((field, form))
+
+    # If step is past the last sub-Q → go to next VerbQuestion
+    if step >= len(active_fields):
+    # Finish this verb question → redirect to summary page
+        return redirect(reverse("section2_summary", args=(id,)))
+
+    # Unpack the current form
+    current_field, current_form = active_fields[step]
+
 
     context['user'] = user
     context['question'] = question
-    context['forms'] = forms
-    context['pageid'] = id
+    context['form'] = current_form
+    context['qid'] = id
     context['section'] = section
+    context['step'] = step
+    context['total_steps'] = len(active_fields)
 
-    return render(request, 'storyboard/questionpage2.html', context)
 
-def get_form_noun(question_obj, ans):
-    question = "What noun is being reffered to/modified by the missing word in the above sentence?"
-    sentence = question_obj.sentence
-    stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
-    words = stripped_sent.split(" ")
-    options = [ans]
-    for i in range(3):
-        random_index = random.randrange(len(words))
-        word = words.pop(random_index)
-        options.append(word)
-    return QuestionFormMC(question=question, optionlist=options)
 
-def get_form_subject_matter(question_obj, ans):
-    question = "Does the missing word also need to be consistent with the subject of the sentence?"
-    options =  ["Yes", "No"]
-    return QuestionFormMC(question=question, optionlist=options)
+    return render(request, 'storyboard/questionpage2_one.html', context)
+    
+@login_required
+def nextquestion2(request):
+    print("nextquestion2 POST")
+    print(request.POST)
 
-def get_form_answer(question_obj, ans):
-    question = "Fill in the blank with the correct form of the missing word."
-    return AnswerForm(question=question)
+    qid = int(request.POST.get("qid", 0))
+    step = int(request.POST.get("step", 0))
+
+    return redirect(reverse("section2_questionpage", args=(qid, step + 1)))
+
+@login_required
+def section2_summary(request, id):
+    user = request.user
+
+    question = get_object_or_404(VerbQuestion, id=id)
+    section = get_object_or_404(Section, id=2)
+
+    # Get all subquestions in the fixed order
+    ordered_fields = [
+        'tense_broad','tense_specific','subject','subject_type',
+        'formality','gender_matter','gender','plurality','conjugation'
+    ]
+
+    # Collect results
+    summary_items = []
+    for field in ordered_fields:
+        correct_answer = getattr(question, field)
+
+        # USER ANSWER stored in VerbResponse
+        try:
+            resp = VerbResponse.objects.get(student=user, question=question)
+            user_answer = resp.response
+        except VerbResponse.DoesNotExist:
+            user_answer = None
+
+        if correct_answer == "-1":
+            continue  # Skip disabled sub-questions
+
+        summary_items.append({
+            "subq_label": field.replace("_", " ").title(),
+            "correct_answer": correct_answer,
+            "user_answer": user_answer,
+            "is_correct": (str(user_answer).strip() == str(correct_answer).strip())
+        })
+
+    # Check if this was the last VerbQuestion
+    is_last_question = (id + 1 >= section.numberofquestions)
+
+    context = {
+        "question": question,
+        "summary_items": summary_items,
+        "qid": id,
+        "is_last_question": is_last_question,
+    }
+
+    return render(request, "storyboard/section2_summary.html", context)
 
 @login_required
 def section3_questionpage(request, id):

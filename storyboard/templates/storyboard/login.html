@@ -15,6 +15,7 @@
     <p>Note: If you are in Section A, Section D, or Section E. This activity will become available at midnight of Nov. 15.</p>
     <br><br>
     <form method = "post" action = "{% url 'login' %}">
+        {% csrf_token %} 
         <div class = "form-group">
             <label>{{form.username.label_tag}}</label>
             {{form.username}}
@@ -25,7 +26,7 @@
         </div>
         <input type="submit" class = "btn main" value="Login">
 
-    {% csrf_token %} 
+    
     </form>
 
 </div>
