@@ -1,0 +1,30 @@
+{% extends "storyboard/nobase.html" %}
+{% load static %}
+
+{% block content %}
+
+<!-- PROGRESS BAR -->
+<!-- <div class="progress-container">
+    <div class="progress-bar progress-{{ step|add:'1' }}"></div>
+</div> -->
+
+<h3>{{ question.sentence }}</h3>
+
+<form method="post" action="{% url 'nextquestion2' %}">
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <input type="hidden" name="qid" value="{{ qid }}">
+    <input type="hidden" name="step" value="{{ step }}">
+
+    <button class="btn main" type="submit">
+        {% if step < total_steps|add:"-1" %}
+            Next
+        {% else %}
+            Finish Question
+        {% endif %}
+    </button>
+</form>
+
+{% endblock %}

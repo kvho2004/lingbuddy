@@ -12,7 +12,7 @@ from django.urls import include, path,re_path
 urlpatterns  =[
     re_path(r'^$', storyboard_views.home, name = 'home'),
 
-    re_path(r'^login$', auth_views.LoginView.as_view(template_name='storyboard/login.html'), name= 'login'),
+    re_path(r'^login/$', auth_views.LoginView.as_view(template_name='storyboard/login.html'), name= 'login'),
 
     re_path(r'^signform$', storyboard_views.signform, name = 'signform'),
     re_path(r'^nextpage$', storyboard_views.nextpage, name = 'nextpage'),
@@ -35,7 +35,16 @@ urlpatterns  =[
 
 
     re_path(r'^section1_questionpage/(?P<id>\d+)$', storyboard_views.section1_questionpage, name = 'section1_questionpage'),
-    re_path(r'^section2_questionpage/(?P<id>\d+)$', storyboard_views.section2_questionpage, name = 'section2_questionpage'),
+    re_path(r'^section2_questionpage/(?P<id>\d+)/(?P<step>\d+)$', 
+        views.section2_questionpage, 
+        name='section2_questionpage'),
+    path('section2_next/', views.nextquestion2, name='nextquestion2'),
+    path(
+        'section2_summary/<int:id>/',
+        views.section2_summary,
+        name='section2_summary'
+    ),
+
     re_path(r'^section3_questionpage/(?P<id>\d+)$', storyboard_views.section3_questionpage, name = 'section3_questionpage'),
     re_path(r'^section4_questionpage/(?P<id>\d+)$', storyboard_views.section4_questionpage, name = 'section4_questionpage'),
 

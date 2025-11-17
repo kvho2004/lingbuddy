@@ -148,3 +148,33 @@ table
   width: 300pt;
   height: 100pt;
 }
+
+
+.progress-container {
+    width: 100%;
+    background: #eee;
+    height: 12px;
+    border-radius: 6px;
+}
+.progress-bar {
+    height: 12px;
+    background: #4a7bd8;
+    border-radius: 6px;
+}
+
+.progress-0 { width: 0%; }
+.progress-1 { width: 11%; }
+.progress-2 { width: 22%; }
+.progress-3 { width: 33%; }
+.progress-4 { width: 44%; }
+.progress-5 { width: 55%; }
+.progress-6 { width: 66%; }
+.progress-7 { width: 77%; }
+.progress-8 { width: 88%; }
+.progress-9 { width: 100%; }
+
+
+.message-green {
+    color: green;
+}
+
