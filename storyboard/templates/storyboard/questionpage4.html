@@ -4,7 +4,10 @@
 {% static "" as baseUrl %}
 
 {% block user-info %}
-<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">{{user.username}}</div>
+<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
+    {{user.username}}
+</div>
 {% endblock %}
 
 {% block content %}

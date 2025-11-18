@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import pandas as pd
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404, get_list_or_404
 # from django.core.urlresolvers import reverse
 from django.urls import reverse
@@ -21,6 +22,7 @@ import os
 import numpy as np
 import random
 from django.utils import timezone
+import ast
 
 from os import listdir
 from django.core.files import File
@@ -207,28 +209,28 @@ def section4(request):
     context = {}
     user = request.user
     section = get_object_or_404(Section, id= 4)
-    progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    progress = progress_list[0]
+    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
+    # progress = progress_list[0]
 
     if request.method == "GET":
-        if progress.trial == 0:
-            context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
-        else:
-            progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
-            score= progress_highestscore.score
-            context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."
+        # if progress.trial == 0:
+        #     context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
+        # else:
+        #     progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
+        #     score= progress_highestscore.score
+        #     context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."
         return render(request, 'storyboard/section4.html', context)
 
     else:    
-        trial = progress.trial+1
-        progress = Progress(student = user, section  = section, trial = trial, score = 0)
-        progress.save()
-        number_of_questions = section.numberofquestions
-        for i in range(number_of_questions):
-            question = Question.objects.filter(section = section).order_by("id")[i]
-            response = Response(student = user, trial = trial, question = question, section = section)
-            response.save()
-        return redirect(reverse('section4_questionpage', args = (0,)))
+        # trial = progress.trial+1
+        # progress = Progress(student = user, section  = section, trial = trial, score = 0)
+        # progress.save()
+        # number_of_questions = section.numberofquestions
+        # for i in range(number_of_questions):
+        #     question = Question.objects.filter(section = section).order_by("id")[i]
+        #     response = Response(student = user, trial = trial, question = question, section = section)
+        #     response.save()
+        return redirect(reverse('section4_chat', args = (0,)))
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -414,65 +416,79 @@ def section1_questionpage(request, id):
 def get_form_tense_broad(question_obj, ans):
     question = "What is the tense of the above sentence?"
     options = ["Past", "Present", "Future"]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans.capitalize()) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_tense_specific(question_obj, ans):
-    if ans == "-1": return "N/A"
+    if ans == "-1": return ("N/A", -1, -1)
     question = "More specifically, what is the tense of the above sentence?"
     past_options = ["Imparfait (imperfect)", "Passé composé (present perfect)", "Passé récent (Recent past)"]
     future_options = ["Futur simple (the simple future)", "Futur proche (the near future)"]
     options = {"Past": past_options, "Future": future_options}
     options = options[question_obj.tense_broad]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans.capitalize()) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_subject(question_obj, ans):
-    if ans == "-1": return "N/A"
+    if ans == "-1": return ("N/A", -1, -1)
     question = "What is the subject of the above sentence?"
-    sentence = question_obj.sentence
-    stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
-    words = stripped_sent.split(" ")
-    options = [ans]
-    for i in range(3):
-        random_index = random.randrange(len(words))
-        word = words.pop(random_index)
-        options.append(word)
-    return QuestionFormMC(question=question, optionlist=options)
+    if question_obj.subject_options == "":
+        sentence = question_obj.sentence
+        stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
+        words = stripped_sent.split(" ")
+        words = [word for word in words if word not in ["", ans]]
+        options = [ans]
+        for i in range(3):
+            random_index = random.randrange(len(words))
+            word = words.pop(random_index)
+            options.append(word)
+        question_obj.subject_options = str(options)
+        question_obj.save()
+    else:
+        options = ast.literal_eval(question_obj.subject_options)
+    form_ans = options.index(ans) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_subject_type(question_obj, ans):
     question = "In what person are we referring to the subject?"
     options = ["First person", "Second person", "Third person"]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_formality(question_obj, ans):
-    if ans == "-1": return "N/A"
+    if ans == "-1": return ("N/A", -1, -1)
     question = "Should the subject be referred to formally or informally?"
     options = ["Formal", "Informal"]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_gender_matter(question_obj, ans):
     question = "Does the gender of the subject matter in the conjugation of the verb?"
     options =  ["Yes", "No"]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans.capitalize()) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_gender(question_obj, ans):
-    if ans == "-1": return "N/A"
+    if ans == "-1": return ("N/A", -1, -1)
     question = "Is the subject masculine or feminine?"
     options =  ["Feminine", "Masculine"]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans.capitalize()) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_pluraility(question_obj, ans):
     question = "Is the subject a singular or plural?"
     options = ["Singular", "Plural"]
-    return QuestionFormMC(question=question, optionlist=options)
+    form_ans = options.index(ans.capitalize()) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_conjugation(question_obj, ans):
     question = "What is the conjugation of the verb in context?"
-    return AnswerForm(question=question)
+    return (AnswerForm(question=question), ans, "N/A")
 
 
 @login_required
 def section2_questionpage(request, id, step):
-
+    print(request)
     user = request.user
     section = get_object_or_404(Section, id= 2)
     context = {}
@@ -487,6 +503,19 @@ def section2_questionpage(request, id, step):
     question = get_object_or_404(VerbQuestion, id = id)
     question.sentence = question.sentence.replace("[blank]", "____________")
     question.save()
+
+    # if reload_subject_form:
+    #     context['user'] = user
+    #     context['question'] = question
+    #     form_q = "What is the subject of the above sentence?"
+    #     context['form'] = QuestionFormMC(question=form_q, optionlist=reload_subject_form[0])
+    #     context['qid'] = id
+    #     context['section'] = section
+    #     context['step'] = step
+    #     context['form_ans'] = reload_subject_form[1]
+    #     context['field'] = "subject"
+
+    #     return render(request, 'storyboard/questionpage2_one.html', context)
 
     questions = {
         'tense_broad': get_form_tense_broad, 
@@ -509,9 +538,10 @@ def section2_questionpage(request, id, step):
     active_fields = []
     for field in ordered_fields:
         field_ans = getattr(question, field)
-        form = questions[field](question_obj=question, ans=field_ans)
+        print(questions[field](question_obj=question, ans=field_ans))
+        form, form_ans, form_options = questions[field](question_obj=question, ans=field_ans)
         if form != "N/A":
-            active_fields.append((field, form))
+            active_fields.append((field, form, form_ans, form_options))
 
     # If step is past the last sub-Q → go to next VerbQuestion
     if step >= len(active_fields):
@@ -519,8 +549,7 @@ def section2_questionpage(request, id, step):
         return redirect(reverse("section2_summary", args=(id,)))
 
     # Unpack the current form
-    current_field, current_form = active_fields[step]
-
+    current_field, current_form, current_form_ans, current_form_options = active_fields[step]
 
     context['user'] = user
     context['question'] = question
@@ -529,18 +558,58 @@ def section2_questionpage(request, id, step):
     context['section'] = section
     context['step'] = step
     context['total_steps'] = len(active_fields)
-
-
+    context['form_ans'] = current_form_ans
+    context['field'] = current_field
+    if current_form_options != "N/A":
+        context['options'] = current_form_options
 
     return render(request, 'storyboard/questionpage2_one.html', context)
     
 @login_required
 def nextquestion2(request):
+    user = request.user
     print("nextquestion2 POST")
     print(request.POST)
 
     qid = int(request.POST.get("qid", 0))
     step = int(request.POST.get("step", 0))
+    form_ans = request.POST.get("form_ans", 0)
+    if form_ans.isdigit(): 
+        form_ans = int(form_ans)
+    user_ans = request.POST.get("response", 0)
+    if user_ans.isdigit(): 
+        user_ans = int(user_ans)
+    else:
+        user_ans = user_ans.lower()
+    field = request.POST.get("field", 0)
+
+    question = get_object_or_404(VerbQuestion, id = qid)
+    response = VerbResponse.objects.get(student=user, question=question)
+    response_field = getattr(response, field)
+    attempt_value = 1 if form_ans == user_ans else 0
+
+    response_ans = ast.literal_eval(response.initial_ans_current)
+    if len(response_ans) <= step:
+        if field != "conjugation":
+            options = request.POST.get("options", 0)
+            options = ast.literal_eval(options)
+            response_ans.append(options[user_ans-1])
+        else:
+            response_ans.append(user_ans)
+        response.initial_ans_current = response_ans
+        response.save()
+
+    
+    if response_field == "":
+        response_field = f"{attempt_value}"
+    else:
+        response_field += f",{attempt_value}"
+    setattr(response, field, response_field)
+    response.save()
+
+    if attempt_value == 0:
+        messages.error(request, "Hmm...That answer isn't quite right...")
+        return redirect(reverse("section2_questionpage", args=(qid, step)))
 
     return redirect(reverse("section2_questionpage", args=(qid, step + 1)))
 
@@ -557,27 +626,27 @@ def section2_summary(request, id):
         'formality','gender_matter','gender','plurality','conjugation'
     ]
 
+    resp = VerbResponse.objects.get(student=user, question=question)
+    user_answers = ast.literal_eval(resp.initial_ans_current)
+    ans_idx = 0
+
     # Collect results
     summary_items = []
     for field in ordered_fields:
         correct_answer = getattr(question, field)
 
-        # USER ANSWER stored in VerbResponse
-        try:
-            resp = VerbResponse.objects.get(student=user, question=question)
-            user_answer = resp.response
-        except VerbResponse.DoesNotExist:
-            user_answer = None
-
         if correct_answer == "-1":
             continue  # Skip disabled sub-questions
 
+        user_answer = user_answers[ans_idx]
+
         summary_items.append({
             "subq_label": field.replace("_", " ").title(),
-            "correct_answer": correct_answer,
+            "correct_answer": correct_answer.capitalize(),
             "user_answer": user_answer,
-            "is_correct": (str(user_answer).strip() == str(correct_answer).strip())
+            "is_correct": (str(user_answer).strip().capitalize() == str(correct_answer).strip().capitalize())
         })
+        ans_idx += 1
 
     # Check if this was the last VerbQuestion
     is_last_question = (id + 1 >= section.numberofquestions)
@@ -873,24 +942,25 @@ def imagefeedback(request):
 def imagefeedback2(request):
     user = request.user
     if request.method =="POST":
+        print("here")
         print (request.POST)
-        sectionid = int(request.POST['sectionid'])
-        print (sectionid)
-        section = get_object_or_404(Section, id= sectionid)
+        # sectionid = int(request.POST['sectionid'])
+        # print (sectionid)
+        # section = get_object_or_404(Section, id= sectionid)
         
-        progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-        progress = progress_list[0]
-        trial = progress.trial
+        # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
+        # progress = progress_list[0]
+        # trial = progress.trial
 
-        questionid =int(request.POST["questionid"])
-        question = get_object_or_404(Question, pk = questionid)
+        questionid =int(request.POST["qid"])
+        question = get_object_or_404(VerbQuestion, pk = questionid)
 
-        response = Response.objects.filter(student= user).filter(trial = trial).filter(section = section).filter(question = question)[0]
-        if response.response!=0:
-            alertmessage = "True"
-            response_text = '{ "alertmessage": "'+alertmessage+'"}'
-            print ("yesyes")
-            return HttpResponse(response_text, 'application/json')
+        response = Response.objects.filter(student= user).filter(question = question)[0]
+        # if response.response!=0:
+        #     alertmessage = "True"
+        #     response_text = '{ "alertmessage": "'+alertmessage+'"}'
+        #     print ("yesyes")
+        #     return HttpResponse(response_text, 'application/json')
 
         response_choice = int(request.POST['response'])
 

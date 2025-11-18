@@ -71,7 +71,7 @@ class AnswerForm(forms.ModelForm):
         super(AnswerForm, self).__init__(*args, **kwargs)
         if "question" in self.fields:
             del self.fields["question"]
-        self.fields['response'] =forms.CharField(label=question, max_length = 500, widget = forms.Textarea(attrs ={'class':'textinput', 'placeholder':'Type final answer here...'}), required = True)
+        self.fields['response'] =forms.CharField(label=question, max_length = 500, widget = forms.TextInput(attrs ={'class':'textinput', 'placeholder':'Type final answer here...'}), required = True)
     def clean_response(self):
         response = self.cleaned_data["response"]
         return response

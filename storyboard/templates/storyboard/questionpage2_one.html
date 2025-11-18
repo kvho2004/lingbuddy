@@ -1,5 +1,13 @@
-{% extends "storyboard/nobase.html" %}
+{% extends "storyboard/base.html" %}
 {% load static %}
+{% static "" as baseUrl %}
+
+{% block user-info %}
+<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
+    {{user.username}}
+</div>
+{% endblock %}
 
 {% block content %}
 
@@ -8,6 +16,7 @@
     <div class="progress-bar progress-{{ step|add:'1' }}"></div>
 </div> -->
 
+<h2>{{ question.context }}</h2> <br>
 <h3>{{ question.sentence }}</h3>
 
 <form method="post" action="{% url 'nextquestion2' %}">
@@ -17,14 +26,105 @@
 
     <input type="hidden" name="qid" value="{{ qid }}">
     <input type="hidden" name="step" value="{{ step }}">
+    <input type="hidden" name="form_ans" value="{{ form_ans }}">
+    <input type="hidden" name="field" value="{{ field }}">
+    <input type="hidden" name="options" value="{{ options }}">
 
-    <button class="btn main" type="submit">
-        {% if step < total_steps|add:"-1" %}
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color:maroon;">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <button style="background-color:#6AC47E;" class="btn main" type="submit" id = "checkanswer">
+        {% if total_steps and step < total_steps|add:"-1" %}
             Next
         {% else %}
             Finish Question
         {% endif %}
     </button>
 </form>
+
+<script type="text/javascript">
+    $(document).ready(function(){
+
+        var sectionid = document.getElementById("sectionid").value;
+        section_a_name = "section"+sectionid+"_a";
+        var section_a = document.getElementById(section_a_name);
+        section_a.className+=" active";
+
+
+            var attempted = document.getElementById("attempted").value;
+            if (attempted == "True"){
+                document.getElementById("checkanswerdiv").style.visibility = "hidden";  
+                document.getElementById("nextquestion").style.visibility = "visible";  
+                document.getElementById("id_response_0").disabled = true;
+                document.getElementById("id_response_1").disabled = true;
+                document.getElementById("id_response_2").disabled = true;
+                document.getElementById("id_response_3").disabled = true;
+            }
+
+
+        $("#checkanswer").on("click", function(){
+            console.log("AHHHHHHH");
+            var $form = $("form");
+            var data = getFormData($form);
+            if(!("response" in data)){
+                alert("Please answer the question.");
+            }
+            else{
+                $.ajax({
+                    url: "/storyboard/imagefeedback2",
+                    type:"POST",
+                    data: data,
+                    dataType: "json",
+                    success: function(response){
+
+                        if (response.alertmessage == "True"){
+                            alert("You are not allowed to modify your answers. Previous answers and feedback are shown.")
+                            location.reload(true);       }
+                        else{
+                            $('#feedbackmessage').empty();
+                            $('#feedbackmessage').append(response.feedbackmessage);
+                            document.getElementById("checkanswerdiv").style.visibility = "hidden";  
+                            document.getElementById("nextquestion").style.visibility = "visible";  
+                            document.getElementById("id_response_0").disabled = true;
+                            document.getElementById("id_response_1").disabled = true;
+                            document.getElementById("id_response_2").disabled = true;
+                            document.getElementById("id_response_3").disabled = true;
+                        }
+                    }
+
+            });
+        }
+
+
+        });
+
+        });
+
+
+        function getFormData($form){
+            var unindexed_array = $form.serializeArray();
+            var indexed_array = {};
+
+            $.map(unindexed_array, function(n, i){
+                indexed_array[n['name']] = n['value'];
+
+            });
+            return indexed_array
+        }
+
+        function getCSRFToken(){
+        var cookies = document.cookie.split(";");
+        for (var i = 0; i < cookies.length; i++) {
+            cookieitem = cookies[i].trim();
+            if (cookieitem.startsWith("csrftoken=")) {
+                return cookieitem.substring("csrftoken=".length, cookieitem.length);
+            }
+        }
+        return "unknown";
+        }
+</script>
 
 {% endblock %}

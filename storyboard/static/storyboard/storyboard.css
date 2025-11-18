@@ -117,14 +117,14 @@ table
 
 /*used for btn main*/
 .main{
-  background: #4F67AE;
+  background: #6AC47E;
   color:white;
   text-align:center;
 }
 
 .main:hover,
 .main:focus {
-  background: #4F67AE !important;
+  background: #56b66b !important;
 }
 
 

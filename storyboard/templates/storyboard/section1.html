@@ -2,9 +2,12 @@
 
 {% load static %}
 
-                    {% block user-info %}
-                    <div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">{{user.username}}</div>
-                    {% endblock %}
+{% block user-info %}
+<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
+    {{user.username}}
+</div>
+{% endblock %}
 {% block content %}
 <div class = "col-sm-12">
 <h1> This page will show student progress as we are tracking it from knowledge tracing</h1>

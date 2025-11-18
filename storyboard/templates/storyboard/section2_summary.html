@@ -1,4 +1,4 @@
-{% extends "storyboard/nobase.html" %}
+{% extends "storyboard/base.html" %}
 {% block content %}
 
 <h2>Review for This Sentence</h2>
@@ -30,9 +30,9 @@
 </table>
 
 {% if is_last_question %}
-    <a class="btn main" href="{% url 'section2' %}">Finish Section</a>
+    <a style="background-color:#6AC47E;" class="btn main" href="{% url 'section2' %}">Finish Section</a>
 {% else %}
-    <a class="btn main" href="{% url 'section2_questionpage' qid|add:1 0 %}">
+    <a style="background-color:#6AC47E;" class="btn main" href="{% url 'section2_questionpage' qid|add:1 0 %}">
         Next Sentence →
     </a>
 {% endif %}
