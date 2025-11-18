@@ -45,6 +45,16 @@ urlpatterns  =[
         name='section2_summary'
     ),
 
+    re_path(r'^section3_questionpage/(?P<id>\d+)/(?P<step>\d+)$', 
+        views.section3_questionpage, 
+        name='section3_questionpage'),
+    path('section3_next/', views.nextquestion3, name='nextquestion3'),
+    path(
+        'section3_summary/<int:id>/',
+        views.section3_summary,
+        name='section3_summary'
+    ),
+
     re_path(r'^section3_questionpage/(?P<id>\d+)$', storyboard_views.section3_questionpage, name = 'section3_questionpage'),
     re_path(r'^section4_questionpage/(?P<id>\d+)$', storyboard_views.section4_questionpage, name = 'section4_questionpage'),
 
