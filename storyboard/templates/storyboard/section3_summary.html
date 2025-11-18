@@ -1,31 +1,41 @@
-{% extends "storyboard/nobase.html" %}
+{% extends "storyboard/base.html" %}
+
+{% block user-info %}
+<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
+    {{user.username}}
+</div>
+{% endblock %}
 
 {% block content %}
 
-<h2>Summary for this Sentence</h2>
+<h2>Review for this Sentence</h2>
 
-<p>{{ question.sentence }}</p>
+<p><strong>{{ question.sentence }}</strong></p>
 
-<table>
-    <tr>
-        <th>Sub-question</th>
-        <th>Your Answer</th>
-        <th>Correct</th>
-    </tr>
-
-    {% for item in summary_items %}
-    <tr>
-        <td>{{ item.subq_label }}</td>
-        <td>{{ item.user_answer }}</td>
-        <td>
-            {% if item.is_correct %}
-                ✅
-            {% else %}
-                ❌ ({{ item.correct_answer }})
-            {% endif %}
-        </td>
-    </tr>
-    {% endfor %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Sub-question</th>
+            <th>Your Answer</th>
+            <th>Correct Answer</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in summary_items %}
+        <tr>
+            <td>{{ item.subq_label }}</td>
+            <td>
+                {% if item.is_correct %}
+                    <span style="color:green">{{ item.user_answer }}</span>
+                {% else %}
+                    <span style="color:red">{{ item.user_answer }}</span>
+                {% endif %}
+            </td>
+            <td>{{ item.correct_answer }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
 
 {% if is_last_question %}

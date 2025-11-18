@@ -1,6 +1,13 @@
 {% extends "storyboard/base.html" %}
 {% block content %}
 
+{% block user-info %}
+<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
+    {{user.username}}
+</div>
+{% endblock %}
+
 <h2>Review for This Sentence</h2>
 <p><strong>{{ question.sentence }}</strong></p>
 
@@ -8,7 +15,7 @@
     <thead>
         <tr>
             <th>Sub-question</th>
-            <th>Your Answer</th>
+            <th>Your First Answer</th>
             <th>Correct Answer</th>
         </tr>
     </thead>

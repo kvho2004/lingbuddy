@@ -92,7 +92,9 @@ class StructureQuestion(models.Model):
     type = models.CharField(max_length = 300000, blank = True)
     subject_matter = models.CharField(max_length = 300000, blank = True)
     subject = models.CharField(max_length = 300000, blank = True)
+    subject_options = models.CharField(max_length = 300000, blank = True)
     noun = models.CharField(max_length = 300000, blank = True)
+    noun_options = models.CharField(max_length = 300000, blank = True)     
     gender = models.CharField(max_length = 300000, blank = True)
     plurality = models.CharField(max_length = 300000, blank = True)
     answer = models.CharField(max_length = 300000, blank = True)
@@ -100,6 +102,7 @@ class StructureQuestion(models.Model):
 class StructureResponse(models.Model):
     id = models.PositiveIntegerField(default = 0, blank = True, primary_key=True)
     student = models.ForeignKey(User, default = None, on_delete=models.CASCADE)
+    initial_ans_current = models.CharField(max_length = 3000, default="[]")
     question = models.ForeignKey(StructureQuestion, default = None, on_delete=models.CASCADE)
     response = models.PositiveIntegerField(blank = True, default= 0)
     ans = models.CharField(max_length = 3000, blank = True)

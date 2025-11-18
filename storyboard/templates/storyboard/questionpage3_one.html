@@ -1,5 +1,12 @@
-{% extends "storyboard/nobase.html" %}
+{% extends "storyboard/base.html" %}
 {% load static %}
+
+{% block user-info %}
+<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+    <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
+    {{user.username}}
+</div>
+{% endblock %}
 
 {% block content %}
 
@@ -7,6 +14,7 @@
     <div class="progress-bar progress-{{ step|add:'1' }}"></div>
 </div>
 
+<h2>{{ question.context }}</h2> <br>
 <h3>{{ question.sentence }}</h3>
 
 <form method="post" action="{% url 'nextquestion3' %}">
@@ -16,6 +24,15 @@
 
     <input type="hidden" name="qid" value="{{ qid }}">
     <input type="hidden" name="step" value="{{ step }}">
+    <input type="hidden" name="form_ans" value="{{ form_ans }}">
+    <input type="hidden" name="field" value="{{ field }}">
+    <input type="hidden" name="options" value="{{ options }}">
+
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color:maroon;">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
 
     <button class="btn main" type="submit">
         {% if step < total_steps|add:"-1" %}

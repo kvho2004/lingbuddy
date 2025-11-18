@@ -11,10 +11,9 @@
 
 {% block content %}
 
-<!-- PROGRESS BAR -->
-<!-- <div class="progress-container">
+<div class="progress-container">
     <div class="progress-bar progress-{{ step|add:'1' }}"></div>
-</div> -->
+</div>
 
 <h2>{{ question.context }}</h2> <br>
 <h3>{{ question.sentence }}</h3>
@@ -44,87 +43,5 @@
         {% endif %}
     </button>
 </form>
-
-<script type="text/javascript">
-    $(document).ready(function(){
-
-        var sectionid = document.getElementById("sectionid").value;
-        section_a_name = "section"+sectionid+"_a";
-        var section_a = document.getElementById(section_a_name);
-        section_a.className+=" active";
-
-
-            var attempted = document.getElementById("attempted").value;
-            if (attempted == "True"){
-                document.getElementById("checkanswerdiv").style.visibility = "hidden";  
-                document.getElementById("nextquestion").style.visibility = "visible";  
-                document.getElementById("id_response_0").disabled = true;
-                document.getElementById("id_response_1").disabled = true;
-                document.getElementById("id_response_2").disabled = true;
-                document.getElementById("id_response_3").disabled = true;
-            }
-
-
-        $("#checkanswer").on("click", function(){
-            console.log("AHHHHHHH");
-            var $form = $("form");
-            var data = getFormData($form);
-            if(!("response" in data)){
-                alert("Please answer the question.");
-            }
-            else{
-                $.ajax({
-                    url: "/storyboard/imagefeedback2",
-                    type:"POST",
-                    data: data,
-                    dataType: "json",
-                    success: function(response){
-
-                        if (response.alertmessage == "True"){
-                            alert("You are not allowed to modify your answers. Previous answers and feedback are shown.")
-                            location.reload(true);       }
-                        else{
-                            $('#feedbackmessage').empty();
-                            $('#feedbackmessage').append(response.feedbackmessage);
-                            document.getElementById("checkanswerdiv").style.visibility = "hidden";  
-                            document.getElementById("nextquestion").style.visibility = "visible";  
-                            document.getElementById("id_response_0").disabled = true;
-                            document.getElementById("id_response_1").disabled = true;
-                            document.getElementById("id_response_2").disabled = true;
-                            document.getElementById("id_response_3").disabled = true;
-                        }
-                    }
-
-            });
-        }
-
-
-        });
-
-        });
-
-
-        function getFormData($form){
-            var unindexed_array = $form.serializeArray();
-            var indexed_array = {};
-
-            $.map(unindexed_array, function(n, i){
-                indexed_array[n['name']] = n['value'];
-
-            });
-            return indexed_array
-        }
-
-        function getCSRFToken(){
-        var cookies = document.cookie.split(";");
-        for (var i = 0; i < cookies.length; i++) {
-            cookieitem = cookies[i].trim();
-            if (cookieitem.startsWith("csrftoken=")) {
-                return cookieitem.substring("csrftoken=".length, cookieitem.length);
-            }
-        }
-        return "unknown";
-        }
-</script>
 
 {% endblock %}

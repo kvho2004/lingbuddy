@@ -475,7 +475,7 @@ def get_form_gender(question_obj, ans):
     form_ans = options.index(ans.capitalize()) + 1
     return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
-def get_form_pluraility(question_obj, ans):
+def get_form_plurality(question_obj, ans):
     question = "Is the subject a singular or plural?"
     options = ["Singular", "Plural"]
     form_ans = options.index(ans.capitalize()) + 1
@@ -504,19 +504,6 @@ def section2_questionpage(request, id, step):
     question.sentence = question.sentence.replace("[blank]", "____________")
     question.save()
 
-    # if reload_subject_form:
-    #     context['user'] = user
-    #     context['question'] = question
-    #     form_q = "What is the subject of the above sentence?"
-    #     context['form'] = QuestionFormMC(question=form_q, optionlist=reload_subject_form[0])
-    #     context['qid'] = id
-    #     context['section'] = section
-    #     context['step'] = step
-    #     context['form_ans'] = reload_subject_form[1]
-    #     context['field'] = "subject"
-
-    #     return render(request, 'storyboard/questionpage2_one.html', context)
-
     questions = {
         'tense_broad': get_form_tense_broad, 
         'tense_specific': get_form_tense_specific, 
@@ -525,7 +512,7 @@ def section2_questionpage(request, id, step):
         "formality": get_form_formality, 
         "gender_matter": get_form_gender_matter, 
         "gender": get_form_gender, 
-        "plurality": get_form_pluraility, 
+        "plurality": get_form_plurality, 
         "conjugation": get_form_conjugation
     }
 
@@ -599,7 +586,6 @@ def nextquestion2(request):
         response.initial_ans_current = response_ans
         response.save()
 
-    
     if response_field == "":
         response_field = f"{attempt_value}"
     else:
@@ -662,7 +648,6 @@ def section2_summary(request, id):
 
 @login_required
 def section3_questionpage(request, id, step=0):
-
     user = request.user
     section = get_object_or_404(Section, id=3)
 
@@ -676,14 +661,14 @@ def section3_questionpage(request, id, step=0):
     active_fields = []
     for field in STRUCTURE_FIELDS:
         ans = getattr(question, field)
-        form = STRUCTURE_FORMS[field](question_obj=question, ans=ans)
+        form, form_ans, form_options = STRUCTURE_FORMS[field](question_obj=question, ans=ans)
         if form != "N/A":
-            active_fields.append((field, form))
+            active_fields.append((field, form, form_ans, form_options))
 
     if step >= len(active_fields):
         return redirect(reverse("section3_summary", args=(id,)))
 
-    current_field, current_form = active_fields[step]
+    current_field, current_form, current_form_ans, current_form_options = active_fields[step]
 
     context = {
         "user": user,
@@ -693,47 +678,90 @@ def section3_questionpage(request, id, step=0):
         "section": section,
         "step": step,
         "total_steps": len(active_fields),
+        "form_ans": current_form_ans,
+        "field": current_field
     }
+    if current_form_options != "N/A":
+        context['options'] = current_form_options
 
     return render(request, "storyboard/questionpage3_one.html", context)
 
 def get_form_subject_matter(question_obj, ans):
-    question = "What kind of element are you selecting?"
-    options = [ans]  # Could later add distractors
-    return QuestionFormMC(question=question, optionlist=options)
-
-def get_form_subject_s3(question_obj, ans):
-    if ans == "-1": return "N/A"
-    question = "What is the subject of the sentence?"
-    options = [ans]
-    return QuestionFormMC(question=question, optionlist=options)
+    if ans == "-1": return ("N/A", -1, -1)
+    question = "Does the subject of the sentence need to also be considered to ensure agreement with the missing word?"
+    options =  ["Yes", "No"]
+    form_ans = options.index(ans.capitalize()) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_noun(question_obj, ans):
-    question = "What noun completes the blank?"
-    options = [ans]
-    return QuestionFormMC(question=question, optionlist=options)
-
-def get_form_gender_s3(question_obj, ans):
-    if ans == "-1": return "N/A"
-    question = "What is the gender of the noun?"
-    options = ["feminine", "masculine"]
-    return QuestionFormMC(question=question, optionlist=options)
-
-def get_form_plurality_s3(question_obj, ans):
-    question = "Is the noun singular or plural?"
-    options = ["singular", "plural"]
-    return QuestionFormMC(question=question, optionlist=options)
+    if ans == "-1": return ("N/A", -1, -1)
+    question = "What is the noun which the missing word in the sentence refers to?"
+    if question_obj.noun_options == "":
+        sentence = question_obj.sentence
+        stripped_sent = sentence.translate(str.maketrans('', '', string.punctuation))
+        words = stripped_sent.split(" ")
+        words = [word for word in words if word not in ["", ans]]
+        options = [ans]
+        for i in range(3):
+            random_index = random.randrange(len(words))
+            word = words.pop(random_index)
+            options.append(word)
+        question_obj.noun_options = str(options)
+        question_obj.save()
+    else:
+        options = ast.literal_eval(question_obj.noun_options)
+    form_ans = options.index(ans) + 1
+    return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_answer(question_obj, ans):
-    question = "What is the correct structure?"
-    return AnswerForm(question=question)
+    question = "What is the correct missing word?"
+    return (AnswerForm(question=question), ans, "N/A")
 
 @login_required
 def nextquestion3(request):
+    user = request.user
     qid = int(request.POST.get("qid", 0))
     step = int(request.POST.get("step", 0))
 
+    form_ans = request.POST.get("form_ans", 0)
+    if form_ans.isdigit(): 
+        form_ans = int(form_ans)
+    user_ans = request.POST.get("response", 0)
+    if user_ans.isdigit(): 
+        user_ans = int(user_ans)
+    else:
+        user_ans = user_ans.lower()
+    field = request.POST.get("field", 0)
+
+    question = get_object_or_404(StructureQuestion, id = qid)
+    response = StructureResponse.objects.get(student=user, question=question)
+    response_field = getattr(response, field)
+    attempt_value = 1 if form_ans == user_ans else 0
+
+    response_ans = ast.literal_eval(response.initial_ans_current)
+    if len(response_ans) <= step:
+        if field != "answer":
+            options = request.POST.get("options", 0)
+            options = ast.literal_eval(options)
+            response_ans.append(options[user_ans-1])
+        else:
+            response_ans.append(user_ans)
+        response.initial_ans_current = response_ans
+        response.save()
+
+    if response_field == "":
+        response_field = f"{attempt_value}"
+    else:
+        response_field += f",{attempt_value}"
+    setattr(response, field, response_field)
+    response.save()
+
+    if attempt_value == 0:
+        messages.error(request, "Hmm...That answer isn't quite right...")
+        return redirect(reverse("section3_questionpage", args=(qid, step)))
+
     return redirect(reverse("section3_questionpage", args=(qid, step + 1)))
+
 
 @login_required
 def section3_summary(request, id):
@@ -742,21 +770,25 @@ def section3_summary(request, id):
     section = get_object_or_404(Section, id=3)
 
     summary_items = []
-    resp, _ = StructureResponse.objects.get_or_create(student=user, question=question)
+    resp = StructureResponse.objects.get(student=user, question=question)
+    user_answers = ast.literal_eval(resp.initial_ans_current)
+    ans_idx = 0
 
     for field in STRUCTURE_FIELDS:
         correct_answer = getattr(question, field)
-        user_answer = getattr(resp, field, "")
 
         if correct_answer == "-1":
             continue
+
+        user_answer = user_answers[ans_idx]
 
         summary_items.append({
             "subq_label": field.replace("_", " ").title(),
             "correct_answer": correct_answer,
             "user_answer": user_answer,
-            "is_correct": (str(user_answer).strip() == str(correct_answer).strip())
+            "is_correct": (str(user_answer).strip().capitalize() == str(correct_answer).strip().capitalize())
         })
+        ans_idx += 1
 
     is_last = (id + 1 >= section.numberofquestions)
 
@@ -874,20 +906,20 @@ def nextpage2(request):
         return redirect(reverse(reversepage, args = (str(question.id),)))
 
 STRUCTURE_FIELDS = [
+    "noun",
     "subject_matter",
     "subject",
-    "noun",
     "gender",
     "plurality",
     "answer",
 ]
 
 STRUCTURE_FORMS = {
-    "subject_matter": get_form_subject_matter,
-    "subject": get_form_subject_s3,
     "noun": get_form_noun,
-    "gender": get_form_gender_s3,
-    "plurality": get_form_plurality_s3,
+    "subject_matter": get_form_subject_matter,
+    "subject": get_form_subject,
+    "gender": get_form_gender,
+    "plurality": get_form_plurality,
     "answer": get_form_answer,
 }
 
@@ -914,9 +946,9 @@ def nextpage3(request):
         return redirect(reverse('section'+str(section.id)))
     else:
 
-        responses = Response.objects.filter(student =user).filter(question = question).order_by("-updated_at")
-        response = responses[0]
-        response.justification = request.POST['justification']
+        empty_responses = StructureResponse.objects.filter(student =user).filter(correct = False).order_by("-updated_at")
+        response = empty_responses[0]
+        question = response.question
         response.nextquestion_at= timezone.now()
         response.save()
         reversepage = "section3_questionpage"
@@ -1307,7 +1339,7 @@ def import_questions_section3():
 
     for i in range(len(data)):
         entry = data.iloc[i]
-        question = StructureQuestion(id=i, sentence = entry["sentence"], context = entry["context"], type = entry["type"], subject = entry["subject"], noun = entry["noun"], gender = entry["gender"], plurality = entry["plurality"], answer = entry["answer"])
+        question = StructureQuestion(id=i, sentence = entry["sentence"], context = entry["context"], type = entry["type"], subject_matter = entry["subject_matter"], subject = entry["subject"], noun = entry["noun"], gender = entry["gender"], plurality = entry["plurality"], answer = entry["answer"])
         question.save()
 
     successmessage = "section 3 questions imported"
