@@ -172,6 +172,7 @@ def section2(request):
         for i in range(number_of_questions):
             question = VerbQuestion.objects.filter(id=i)[0]
             response = VerbResponse(id = i, student = user, question = question)
+            Section2Performance.objects.get_or_create(user=user, question=question)
             response.save()
         return redirect(reverse('section2_questionpage', args = (0,0)))
 
@@ -555,34 +556,44 @@ def section2_questionpage(request, id, step):
 @login_required
 def nextquestion2(request):
     user = request.user
-    print("nextquestion2 POST")
-    print(request.POST)
 
     qid = int(request.POST.get("qid", 0))
     step = int(request.POST.get("step", 0))
     form_ans = request.POST.get("form_ans", 0)
-    if form_ans.isdigit(): 
-        form_ans = int(form_ans)
+    if form_ans.isdigit(): form_ans = int(form_ans)
     user_ans = request.POST.get("response", 0)
-    if user_ans.isdigit(): 
-        user_ans = int(user_ans)
-    else:
-        user_ans = user_ans.lower()
+    if user_ans.isdigit(): user_ans = int(user_ans)
+    else: user_ans = user_ans.lower()
     field = request.POST.get("field", 0)
 
-    question = get_object_or_404(VerbQuestion, id = qid)
+    question = get_object_or_404(VerbQuestion, id=qid)
     response = VerbResponse.objects.get(student=user, question=question)
     response_field = getattr(response, field)
     attempt_value = 1 if form_ans == user_ans else 0
 
+    # ADAPTIVE PRIORITY SCORING HERE
+    perf, created = Section2Performance.objects.get_or_create(
+        user=user,
+        question=question
+    )
+    perf.times_seen += 1
+    if attempt_value == 1:
+        perf.times_correct += 1
+        perf.priority_score *= 0.8       # decrease priority
+    else:
+        perf.priority_score += 1.0       # increase priority
+    perf.save()
+
+    # existing correctness-saving logic…
     response_ans = ast.literal_eval(response.initial_ans_current)
+
     if len(response_ans) <= step:
         if field != "conjugation":
-            options = request.POST.get("options", 0)
-            options = ast.literal_eval(options)
-            response_ans.append(options[user_ans-1])
+            options = ast.literal_eval(request.POST.get("options", "[]"))
+            response_ans.append(options[user_ans - 1])
         else:
             response_ans.append(user_ans)
+
         response.initial_ans_current = response_ans
         response.save()
 
@@ -593,10 +604,12 @@ def nextquestion2(request):
     setattr(response, field, response_field)
     response.save()
 
+    # If wrong, repeat same step
     if attempt_value == 0:
         messages.error(request, "Hmm...That answer isn't quite right...")
         return redirect(reverse("section2_questionpage", args=(qid, step)))
 
+    # If correct, next step
     return redirect(reverse("section2_questionpage", args=(qid, step + 1)))
 
 @login_required
@@ -690,7 +703,11 @@ def get_form_subject_matter(question_obj, ans):
     if ans == "-1": return ("N/A", -1, -1)
     question = "Does the subject of the sentence need to also be considered to ensure agreement with the missing word?"
     options =  ["Yes", "No"]
-    form_ans = options.index(ans.capitalize()) + 1
+    if not ans:
+        form_ans = None
+    else:
+        form_ans = options.index(ans.capitalize()) + 1
+
     return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_noun(question_obj, ans):
@@ -1366,4 +1383,5 @@ def import_questions():
 
 def group1():
     print (batchregister_group1())
+
 

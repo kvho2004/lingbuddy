@@ -181,3 +181,20 @@ class SeverityResponse(models.Model):
     nextquestion_at = models.DateTimeField(auto_now = False, blank = True, default = timezone.now)
     updated_at = models.DateTimeField(auto_now = True, blank = True)
 
+class Section2Performance(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(VerbQuestion, on_delete=models.CASCADE)
+
+    times_seen = models.IntegerField(default=0)
+    times_correct = models.IntegerField(default=0)
+
+    # Used to decide which question the user sees next
+    priority_score = models.FloatField(default=1.0)
+
+    last_seen = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'question')
+
+    def __str__(self):
+        return f"{self.user} - {self.question} ({self.priority_score})"
