@@ -661,45 +661,111 @@ def section2_summary(request, id):
     return render(request, "storyboard/section2_summary.html", context)
 
 @login_required
-def section3_questionpage(request, id):
+def section3_questionpage(request, id, step=0):
 
     user = request.user
-    section = get_object_or_404(Section, id= 3)
-    context = {}
+    section = get_object_or_404(Section, id=3)
 
+    id = int(id)
+    step = int(step)
 
-    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    # progress = progress_list[0]
-    # trial = progress.trial
-
-    question = get_object_or_404(StructureQuestion, id = int(id))
+    question = get_object_or_404(StructureQuestion, id=id)
     question.sentence = question.sentence.replace("[blank]", "____________")
     question.save()
 
-    questions = {
-        "noun": get_form_noun, 
-        'subject': get_form_subject_matter, 
-        'subject': get_form_subject, 
-        "gender": get_form_gender, 
-        "plurality": get_form_pluraility, 
-        "answer": get_form_answer
+    active_fields = []
+    for field in STRUCTURE_FIELDS:
+        ans = getattr(question, field)
+        form = STRUCTURE_FORMS[field](question_obj=question, ans=ans)
+        if form != "N/A":
+            active_fields.append((field, form))
+
+    if step >= len(active_fields):
+        return redirect(reverse("section3_summary", args=(id,)))
+
+    current_field, current_form = active_fields[step]
+
+    context = {
+        "user": user,
+        "question": question,
+        "form": current_form,
+        "qid": id,
+        "section": section,
+        "step": step,
+        "total_steps": len(active_fields),
     }
-    fields = question._meta.get_fields()
-    forms = []
-    for field in fields:
-        if field.name in questions:
-            field_ans = getattr(question, field.name)
-            form = questions[field.name](question_obj=question, ans=field_ans)
-            if form != "N/A": forms.append(form)
 
-    context['user'] = user
-    context['question'] = question
-    context['forms'] = forms
-    context['pageid'] = id
-    context['section'] = section
+    return render(request, "storyboard/questionpage3_one.html", context)
 
-    return render(request, 'storyboard/questionpage3.html', context)
+def get_form_subject_matter(question_obj, ans):
+    question = "What kind of element are you selecting?"
+    options = [ans]  # Could later add distractors
+    return QuestionFormMC(question=question, optionlist=options)
 
+def get_form_subject_s3(question_obj, ans):
+    if ans == "-1": return "N/A"
+    question = "What is the subject of the sentence?"
+    options = [ans]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_noun(question_obj, ans):
+    question = "What noun completes the blank?"
+    options = [ans]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_gender_s3(question_obj, ans):
+    if ans == "-1": return "N/A"
+    question = "What is the gender of the noun?"
+    options = ["feminine", "masculine"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_plurality_s3(question_obj, ans):
+    question = "Is the noun singular or plural?"
+    options = ["singular", "plural"]
+    return QuestionFormMC(question=question, optionlist=options)
+
+def get_form_answer(question_obj, ans):
+    question = "What is the correct structure?"
+    return AnswerForm(question=question)
+
+@login_required
+def nextquestion3(request):
+    qid = int(request.POST.get("qid", 0))
+    step = int(request.POST.get("step", 0))
+
+    return redirect(reverse("section3_questionpage", args=(qid, step + 1)))
+
+@login_required
+def section3_summary(request, id):
+    user = request.user
+    question = get_object_or_404(StructureQuestion, id=id)
+    section = get_object_or_404(Section, id=3)
+
+    summary_items = []
+    resp, _ = StructureResponse.objects.get_or_create(student=user, question=question)
+
+    for field in STRUCTURE_FIELDS:
+        correct_answer = getattr(question, field)
+        user_answer = getattr(resp, field, "")
+
+        if correct_answer == "-1":
+            continue
+
+        summary_items.append({
+            "subq_label": field.replace("_", " ").title(),
+            "correct_answer": correct_answer,
+            "user_answer": user_answer,
+            "is_correct": (str(user_answer).strip() == str(correct_answer).strip())
+        })
+
+    is_last = (id + 1 >= section.numberofquestions)
+
+    return render(request, "storyboard/section3_summary.html", {
+        "question": question,
+        "summary_items": summary_items,
+        "qid": id,
+        "is_last_question": is_last,
+    })
 
 @login_required
 def section4_questionpage(request, id):
@@ -807,6 +873,23 @@ def nextpage2(request):
         reversepage = "section2_questionpage"
         return redirect(reverse(reversepage, args = (str(question.id),)))
 
+STRUCTURE_FIELDS = [
+    "subject_matter",
+    "subject",
+    "noun",
+    "gender",
+    "plurality",
+    "answer",
+]
+
+STRUCTURE_FORMS = {
+    "subject_matter": get_form_subject_matter,
+    "subject": get_form_subject_s3,
+    "noun": get_form_noun,
+    "gender": get_form_gender_s3,
+    "plurality": get_form_plurality_s3,
+    "answer": get_form_answer,
+}
 
 @login_required
 def nextpage3(request):
