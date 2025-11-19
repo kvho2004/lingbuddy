@@ -221,3 +221,21 @@ class Section3Performance(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.question} ({self.priority_score})"
+
+class ConceptPerformance(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    concept = models.CharField(max_length=50)  # e.g. "subject_matter", "noun", "answer"
+
+    accuracy_history = models.JSONField(default=list)
+    priority_score = models.FloatField(default=1.0)
+
+    def update_score(self):
+        """Compute mastery difficulty for this concept."""
+        if len(self.accuracy_history) == 0:
+            self.priority_score = 1.0
+            return
+
+        correct_rate = sum(self.accuracy_history) / len(self.accuracy_history)
+
+        # Higher score = higher priority = weaker mastery
+        self.priority_score = 1 / (correct_rate + 0.01)

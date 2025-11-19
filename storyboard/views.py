@@ -735,6 +735,10 @@ def section3_questionpage(request, id, step=0):
     if current_form_options != "N/A":
         context['options'] = current_form_options
 
+    concepts = ConceptPerformance.objects.filter(user=user).order_by("-priority_score")
+    context["concepts"] = concepts
+
+
     return render(request, "storyboard/questionpage3_one.html", context)
 
 def get_form_subject_matter(question_obj, ans):
@@ -806,13 +810,26 @@ def nextquestion3(request):
     attempt_value = 1 if user_text == correct_text else 0
 
     # Update priority queue
-    perf, _ = Section2Performance.objects.get_or_create(
+    perf, _ = Section3Performance.objects.get_or_create(
         user=user, question=question
     )
 
     # Update mastery estimate
     perf.accuracy_history.append(attempt_value)
     perf.update_score()
+
+    # subject type
+    concept = field  
+
+    concept_perf, _ = ConceptPerformance.objects.get_or_create(
+        user=user,
+        concept=concept
+    )
+
+    concept_perf.accuracy_history.append(attempt_value)
+    concept_perf.update_score()
+    concept_perf.save()
+
 
     # Log detailed practice event
     perf.history.append({
@@ -849,6 +866,34 @@ def nextquestion3(request):
         messages.error(request, "Hmm...That answer isn't quite right...")
         return redirect(reverse("section3_questionpage", args=(qid, step)))
 
+    # 1. find weakest concept
+    weakest = ConceptPerformance.objects.filter(user=user).order_by("-priority_score").first()
+
+    if weakest:
+        weakest_concept = weakest.concept
+
+        # 2. find ANY question containing this sub-question type
+        #    AND has that field not equal to "-1" (meaning: the concept exists)
+        qs = StructureQuestion.objects.filter(
+            **{f"{weakest_concept}__isnull": False}
+        )
+        qs = qs.exclude(**{weakest_concept: "-1"})
+
+        if qs.exists():
+            # Could choose:
+            #   - random.choice
+            #   - least practiced among them
+            #   - lowest performance among them
+            next_question = qs.first()  # simplest
+        else:
+            # Fallback if no question trains that concept
+            next_question = StructureQuestion.objects.first()
+    else:
+        # No concept data yet
+        next_question = StructureQuestion.objects.first()
+
+    qid = next_question.id
+
     # Correct → next step
     return redirect(reverse("section3_questionpage", args=(qid, step + 1)))
 
@@ -870,7 +915,11 @@ def section3_summary(request, id):
         if correct_answer == "-1":
             continue
 
-        user_answer = user_answers[ans_idx]
+        if ans_idx < len(user_answers):
+            user_answer = user_answers[ans_idx]
+        else:
+            user_answer = "(no response)"
+
 
         summary_items.append({
             "subq_label": field.replace("_", " ").title(),
