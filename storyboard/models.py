@@ -185,16 +185,39 @@ class Section2Performance(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     question = models.ForeignKey(VerbQuestion, on_delete=models.CASCADE)
 
-    times_seen = models.IntegerField(default=0)
-    times_correct = models.IntegerField(default=0)
-
-    # Used to decide which question the user sees next
+    accuracy_history = models.JSONField(default=list)  # list of 1/0
+    history = models.JSONField(default=list)  # full log of attempts
     priority_score = models.FloatField(default=1.0)
 
-    last_seen = models.DateTimeField(auto_now=True)
+    def update_score(self):
+        if not self.accuracy_history:
+            self.priority_score = 1.0
+        else:
+            last_k = self.accuracy_history[-5:]
+            rate = sum(last_k) / len(last_k)
+            self.priority_score = 1.0 / (rate + 0.01)
+        self.save()
 
-    class Meta:
-        unique_together = ('user', 'question')
+    def __str__(self):
+        return f"{self.user} - {self.question} ({self.priority_score})"
+
+
+class Section3Performance(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(StructureQuestion, on_delete=models.CASCADE)
+
+    accuracy_history = models.JSONField(default=list)
+    history = models.JSONField(default=list)
+    priority_score = models.FloatField(default=1.0)
+
+    def update_score(self):
+        if not self.accuracy_history:
+            self.priority_score = 1.0
+        else:
+            last_k = self.accuracy_history[-5:]
+            rate = sum(last_k) / len(last_k)
+            self.priority_score = 1.0 / (rate + 0.01)
+        self.save()
 
     def __str__(self):
         return f"{self.user} - {self.question} ({self.priority_score})"

@@ -45,9 +45,7 @@ urlpatterns  =[
         name='section2_summary'
     ),
 
-    re_path(r'^section3_questionpage/(?P<id>\d+)/(?P<step>\d+)$', 
-        views.section3_questionpage, 
-        name='section3_questionpage'),
+    path("section3_questionpage/<int:id>/<int:step>", views.section3_questionpage, name="section3_questionpage"),
     path('section3_next/', views.nextquestion3, name='nextquestion3'),
     path(
         'section3_summary/<int:id>/',

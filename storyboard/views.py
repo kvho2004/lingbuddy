@@ -155,7 +155,22 @@ def section2(request):
     # progress = progress_list[0]
 
     if request.method == "GET":
-        return render(request, 'storyboard/section2.html')
+        all_logs = []
+        for perf in Section2Performance.objects.filter(user=user):
+            for entry in perf.history:
+                entry = dict(entry)  # copy
+                entry["question_id"] = perf.question_id
+                all_logs.append(entry)
+
+        # Sort newest first
+        all_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        context = {
+            "user": user,
+            "performance": {"history": all_logs},
+        }
+        return render(request, 'storyboard/section2.html', context)
+
     #     if progress.trial == 0:
     #         context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
     #     else:
@@ -185,7 +200,21 @@ def section3(request):
     # progress = progress_list[0]
 
     if request.method == "GET":
-        return render(request, 'storyboard/section3.html')
+        all_logs = []
+        for perf in Section2Performance.objects.filter(user=user):
+            for entry in perf.history:
+                entry = dict(entry)  # copy
+                entry["question_id"] = perf.question_id
+                all_logs.append(entry)
+
+        # Sort newest first
+        all_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        context = {
+            "user": user,
+            "performance": {"history": all_logs},
+        }
+        return render(request, 'storyboard/section3.html', context)
         # if progress.trial == 0:
         #     context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
         # else:
@@ -203,6 +232,7 @@ def section3(request):
             question = StructureQuestion.objects.filter(id=i)[0]
             response = StructureResponse(id = i, student = user, question = question)
             response.save()
+            Section3Performance.objects.get_or_create(user=user, question = question)
         return redirect(reverse('section3_questionpage', args = (0,)))
 
 @login_required
@@ -426,7 +456,7 @@ def get_form_tense_specific(question_obj, ans):
     past_options = ["Imparfait (imperfect)", "Passé composé (present perfect)", "Passé récent (Recent past)"]
     future_options = ["Futur simple (the simple future)", "Futur proche (the near future)"]
     options = {"Past": past_options, "Future": future_options}
-    options = options[question_obj.tense_broad]
+    options = options[question_obj.tense_broad.capitalize()]
     form_ans = options.index(ans.capitalize()) + 1
     return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
@@ -548,6 +578,8 @@ def section2_questionpage(request, id, step):
     context['total_steps'] = len(active_fields)
     context['form_ans'] = current_form_ans
     context['field'] = current_field
+    perf = Section2Performance.objects.get(user=user, question=question)
+    context["performance"] = perf
     if current_form_options != "N/A":
         context['options'] = current_form_options
 
@@ -572,17 +604,23 @@ def nextquestion2(request):
     attempt_value = 1 if form_ans == user_ans else 0
 
     # ADAPTIVE PRIORITY SCORING HERE
-    perf, created = Section2Performance.objects.get_or_create(
-        user=user,
-        question=question
+    perf, _ = Section2Performance.objects.get_or_create(
+        user=user, question=question
     )
-    perf.times_seen += 1
-    if attempt_value == 1:
-        perf.times_correct += 1
-        perf.priority_score *= 0.8       # decrease priority
-    else:
-        perf.priority_score += 1.0       # increase priority
+
+    # Update mastery estimate
+    perf.accuracy_history.append(attempt_value)
+    perf.update_score()
+
+    # Log detailed practice event
+    perf.history.append({
+        "timestamp": timezone.now().isoformat(),
+        "correct": bool(attempt_value),
+        "field": field,
+        "priority_after": perf.priority_score,
+    })
     perf.save()
+
 
     # existing correctness-saving logic…
     response_ans = ast.literal_eval(response.initial_ans_current)
@@ -703,10 +741,16 @@ def get_form_subject_matter(question_obj, ans):
     if ans == "-1": return ("N/A", -1, -1)
     question = "Does the subject of the sentence need to also be considered to ensure agreement with the missing word?"
     options =  ["Yes", "No"]
-    if not ans:
-        form_ans = None
-    else:
-        form_ans = options.index(ans.capitalize()) + 1
+    if ans in ["", None]:
+        # Missing → no correct option; skip subquestion entirely
+        return ("N/A", -1, -1)
+
+    # Normalize stored answer
+    correct_text = ans.strip().lower()
+
+    # Convert “yes”/“no” to index 1/2
+    form_ans = options.index(correct_text.capitalize()) + 1
+
 
     return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
@@ -740,43 +784,72 @@ def nextquestion3(request):
     qid = int(request.POST.get("qid", 0))
     step = int(request.POST.get("step", 0))
 
-    form_ans = request.POST.get("form_ans", 0)
-    if form_ans.isdigit(): 
-        form_ans = int(form_ans)
-    user_ans = request.POST.get("response", 0)
-    if user_ans.isdigit(): 
-        user_ans = int(user_ans)
-    else:
-        user_ans = user_ans.lower()
-    field = request.POST.get("field", 0)
-
-    question = get_object_or_404(StructureQuestion, id = qid)
+    question = get_object_or_404(StructureQuestion, id=qid)
     response = StructureResponse.objects.get(student=user, question=question)
+
+    field = request.POST.get("field")
+    correct_text = getattr(question, field).strip().lower()
+
+    # Get user input
+    raw_user_ans = request.POST.get("response")
+
+    # Determine MC vs free response
+    if field == "answer":
+        user_text = raw_user_ans.strip().lower()
+    else:
+        options_raw = request.POST.get("options")
+        options = ast.literal_eval(options_raw)
+        user_choice_index = int(raw_user_ans) - 1
+        user_text = options[user_choice_index].strip().lower()
+
+    # Score it
+    attempt_value = 1 if user_text == correct_text else 0
+
+    # Update priority queue
+    perf, _ = Section2Performance.objects.get_or_create(
+        user=user, question=question
+    )
+
+    # Update mastery estimate
+    perf.accuracy_history.append(attempt_value)
+    perf.update_score()
+
+    # Log detailed practice event
+    perf.history.append({
+        "timestamp": timezone.now().isoformat(),
+        "correct": bool(attempt_value),
+        "field": field,
+        "priority_after": perf.priority_score,
+    })
+    perf.save()
+
+
+    # Save attempt history to StructureResponse
     response_field = getattr(response, field)
-    attempt_value = 1 if form_ans == user_ans else 0
-
-    response_ans = ast.literal_eval(response.initial_ans_current)
-    if len(response_ans) <= step:
-        if field != "answer":
-            options = request.POST.get("options", 0)
-            options = ast.literal_eval(options)
-            response_ans.append(options[user_ans-1])
-        else:
-            response_ans.append(user_ans)
-        response.initial_ans_current = response_ans
-        response.save()
-
     if response_field == "":
-        response_field = f"{attempt_value}"
+        response_field = str(attempt_value)
     else:
         response_field += f",{attempt_value}"
+
     setattr(response, field, response_field)
     response.save()
 
+    # Save user answer in initial_ans_current
+    answers = ast.literal_eval(response.initial_ans_current)
+    if len(answers) <= step:
+        if field == "answer":
+            answers.append(user_text)
+        else:
+            answers.append(user_text)
+        response.initial_ans_current = answers
+        response.save()
+
+    # Wrong → repeat step
     if attempt_value == 0:
         messages.error(request, "Hmm...That answer isn't quite right...")
         return redirect(reverse("section3_questionpage", args=(qid, step)))
 
+    # Correct → next step
     return redirect(reverse("section3_questionpage", args=(qid, step + 1)))
 
 
