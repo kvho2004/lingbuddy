@@ -178,3 +178,15 @@ table
     color: green;
 }
 
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 10px;
+}
+
+.grid-item {
+  display: flex; 
+  align-items: center;
+  gap: 5px;
+}
+

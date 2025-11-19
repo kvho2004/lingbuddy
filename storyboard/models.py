@@ -201,6 +201,22 @@ class Section2Performance(models.Model):
     def __str__(self):
         return f"{self.user} - {self.question} ({self.priority_score})"
 
+class ConjugationPractice(models.Model):
+    verb = models.CharField(max_length = 1000, blank = True)
+    tense = models.CharField(max_length = 1000, blank = True)
+    type = models.CharField(max_length = 1000, blank = True)
+    je = models.CharField(max_length = 1000, blank = True)
+    tu = models.CharField(max_length = 1000, blank = True)
+    il_elle_on = models.CharField(max_length = 1000, blank = True)
+    nous = models.CharField(max_length = 1000, blank = True)
+    vous = models.CharField(max_length = 1000, blank = True)
+    ils_elles = models.CharField(max_length = 1000, blank = True)
+
+class ConjugationResponse(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(ConjugationPractice, on_delete=models.CASCADE)
+    correct = models.BooleanField(blank= True, default=False)
+
 
 class Section3Performance(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
