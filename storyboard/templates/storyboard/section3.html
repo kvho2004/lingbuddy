@@ -1,63 +1,99 @@
 {% extends "storyboard/base.html" %}
-
 {% load static %}
 
 {% block user-info %}
-<div style = "color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
+<div style="color:white; font-size: 18px; padding-top: 5pt; padding-right: 5pt;">
     <a class="navbar-brand" href="/login" style="padding-top: 2pt;">Log Out</a>
-    {{user.username}}
+    {{ user.username }}
 </div>
 {% endblock %}
+
 {% block content %}
-<div class = "col-sm-12">
-   <h1>Instructions</h1>
-   <form class = "form-horizontal" method = "post" action = "{% url 'section3' %}">
-   <p>Get practice with <strong>sentence structure</strong> and <strong>noun/article/pronoun agreement</strong>.</p>
-   <p> Be sure to pay attention to provided context as well as linguistic cues in the sentences to help you choose proper verb conjugations.</p>
-   
-   <p>
-   Once you feel confident in your abilities and to get more practice applying your skills in context, you can try one of our conversation chatbots by navigating to the Scenario-Based Chatbot tab.</p>
-   
-   <br>
-   
-   <h3>Your Weakest Concepts</h3>
-   <table class="table">
-   <tr><th>Concept</th><th>Mastery</th><th>Priority</th></tr>
-   {% for c in concepts %}
-   <tr>
-      <td>{{ c.concept|title }}</td>
-      <td>{{ c.accuracy_history|length }} attempts,
-      <td>{{ c.priority_score|floatformat:2 }}</td>
-   </tr>
-   {% endfor %}
-   </table>
+<div class="col-sm-12">
 
-   <h3>Practice History</h3>
-   <table class="table">
-   <tr>
-      <th>Time</th>
-      <th>Correct?</th>
-      <th>Sub-question</th>
-      <th>Priority After</th>
-   </tr>
+<h1>Instructions</h1>
 
-   {% for entry in performance.history %}
-   <tr>
-      <td>{{ entry.timestamp }}</td>
-      <td>
-         {% if entry.correct %}
-         <span style="color:green;">✔</span>
-         {% else %}
-         <span style="color:red;">✘</span>
-         {% endif %}
-      </td>
-      <td>{{ entry.field }}</td>
-      <td>{{ entry.priority_after|floatformat:2 }}</td>
-   </tr>
-   {% endfor %}
-   </table>
-   <input type="submit" name="section3" value = "Start Practicing">
-{% csrf_token %}
+<p>Get practice with <strong>sentence structure</strong> and <strong>noun/article/pronoun agreement</strong>.</p>
+
+<p>Pay close attention to the context and linguistic cues in the sentence.  
+Your goal is to correctly identify the noun reference, subject matter, gender, plurality, and the missing word.</p>
+
+<p>Once you’re confident, you can try a conversation chatbot in the Scenario-Based Chatbot section.</p>
+
+<br>
+
+<h3>Your Weakest Concepts</h3>
+
+{% if concept_history %}
+<table class="table table-bordered table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Concept</th>
+            <th>Accuracy (%)</th>
+            <th>Priority Score</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in concept_history %}
+        <tr>
+            <td>{{ c.concept }}</td>
+            <td>{{ c.accuracy|floatformat:1 }}</td>
+            <td>{{ c.priority_score|floatformat:2 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No concept history yet. Begin practicing to see your mastery progress!</p>
+{% endif %}
+
+<br><br>
+
+<h3>Practice History</h3>
+
+{% if practice_history %}
+<table class="table table-bordered table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Sentence</th>
+            <th>Context</th>
+            <th>Noun</th>
+            <th>Subject Matter</th>
+            <th>Subject</th>
+            <th>Gender</th>
+            <th>Plurality</th>
+            <th>Correct Rate</th>
+            <th>Priority After</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for entry in practice_history %}
+        <tr>
+            <td>{{ entry.timestamp|date:"Y-m-d H:i" }}</td>
+            <td>{{ entry.sentence }}</td>
+            <td>{{ entry.context }}</td>
+            <td>{{ entry.noun }}</td>
+            <td>{{ entry.subject_matter }}</td>
+            <td>{{ entry.subject }}</td>
+            <td>{{ entry.gender }}</td>
+            <td>{{ entry.plurality }}</td>
+            <td>{{ entry.correct_rate|floatformat:2 }}</td>
+            <td>{{ entry.priority_after|floatformat:2 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No practice history yet. Start practicing to see your progress!</p>
+{% endif %}
+
+<br><br>
+
+<form class="form-horizontal" method="post" action="{% url 'section3' %}">
+    {% csrf_token %}
+    <input type="submit" value="Start Practicing" class="btn btn-primary">
 </form>
+
 </div>
 {% endblock %}

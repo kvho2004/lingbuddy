@@ -191,13 +191,17 @@ class Section2Performance(models.Model):
     history = models.JSONField(default=list)  # full log of attempts
     priority_score = models.FloatField(default=1.0)
 
+    conjugation_errors = models.IntegerField(default=0)
+
     def update_score(self):
         if not self.accuracy_history:
             self.priority_score = 1.0
         else:
             last_k = self.accuracy_history[-5:]
             rate = sum(last_k) / len(last_k)
-            self.priority_score = 1.0 / (rate + 0.01)
+            base_score = 1.0 / (rate + 0.01)
+        penalty = 0.2 * self.conjugation_errors
+        self.priority_score = base_score + penalty
         self.save()
 
     def __str__(self):
@@ -268,3 +272,50 @@ class ConjugationPerformace(models.Model):
     # whenever they get everything correct except final answer
     #   if currently 0, set to 5 else up by 1
     practice_mode = models.PositiveIntegerField(blank = True, default = 0) 
+
+
+class Section2HistoryEntry(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(VerbQuestion, on_delete=models.CASCADE)
+
+    timestamp = models.DateTimeField()
+
+    correct_rate = models.FloatField(default=0.0)
+
+    # Priority score AFTER this question was answered
+    priority_after = models.FloatField(default=1.0)
+
+    # Full question metadata for clean table rows
+    sentence = models.CharField(max_length=5000, blank=True)
+    verb = models.CharField(max_length=500, blank=True)
+    context = models.CharField(max_length=500, blank=True)
+
+    tense_broad = models.CharField(max_length=200, blank=True)
+    tense_specific = models.CharField(max_length=200, blank=True)
+    subject = models.CharField(max_length=200, blank=True)
+    subject_type = models.CharField(max_length=200, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Q{self.question_id} @ {self.timestamp}"
+
+class Section3HistoryEntry(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(StructureQuestion, on_delete=models.CASCADE)
+
+    timestamp = models.DateTimeField(default=timezone.now)
+    correct_rate = models.FloatField(default=0.0)
+    priority_after = models.FloatField(default=1.0)
+
+    # Store metadata
+    sentence = models.CharField(max_length=2000, blank=True)
+    context = models.CharField(max_length=500, blank=True)
+
+    noun = models.CharField(max_length=200, blank=True)
+    subject_matter = models.CharField(max_length=200, blank=True)
+    subject = models.CharField(max_length=200, blank=True)
+    gender = models.CharField(max_length=200, blank=True)
+    plurality = models.CharField(max_length=200, blank=True)
+    answer = models.CharField(max_length=200, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Q{self.question_id} - {self.timestamp}"

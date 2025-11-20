@@ -33,6 +33,8 @@ import string
 import random
 
 
+
+
 section_names = ['Section 1 (Profile)', 'Verb Conjugation Practice', 'Sentence Structure Practice', 'Chatbot',  ]
 # Section 3 (Perform Your Own Error Analysis)'
 totalnum_list = [6, 5, 5 ,4]
@@ -100,6 +102,8 @@ Write a short summary in English for the student:
 Be encouraging and concrete. Do NOT output JSON.
 """
 
+
+
 @ensure_csrf_cookie
 @login_required
 def home(request):
@@ -149,53 +153,104 @@ def section1(request):
 
 @login_required
 def section2(request):
-    context = {}
     user = request.user
     section = get_object_or_404(Section, id= 2)
-    # progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
-    # progress = progress_list[0]
 
     if request.method == "GET":
-        all_logs = []
-        for perf in Section2Performance.objects.filter(user=user):
-            for entry in perf.history:
-                entry = dict(entry)  # copy
-                entry["question_id"] = perf.question_id
-                all_logs.append(entry)
+        # 1) per question rows
+        history_rows = []
 
-        # Sort newest first
-        all_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        entries = Section2HistoryEntry.objects.filter(user=user).order_by("-timestamp")
+
+        for h in entries:
+            history_rows.append({
+                "timestamp": h.timestamp,
+                "question_id": h.question.id,
+                "sentence": h.sentence,
+                "verb": h.verb,
+                "context": h.context,
+                "tense_broad": h.tense_broad,
+                "tense_specific": h.tense_specific,
+                "subject": h.subject,
+                "subject_type": h.subject_type,
+                "correct_rate": h.correct_rate,
+                "priority_after": h.priority_after,
+            })
+
+        # Newest first
+        history_rows.sort(key=lambda x: x["timestamp"], reverse=True)
+
+
+        # 2) accuracy per concept
+        concept_rows = []
+        concepts = ConceptPerformance.objects.filter(user=user)
+        for cp in concepts:
+            acc_history = cp.accuracy_history
+            if acc_history:
+                accuracy = 100 * sum(acc_history) / len(acc_history)
+            else:
+                accuracy = 0
+            
+            concept_rows.append({
+                "concept": cp.concept.replace("_", " ").title(),
+                "accuracy": accuracy,
+                "priority_score": cp.priority_score
+            })
 
         context = {
             "user": user,
-            "performance": {"history": all_logs},
+            "practice_history": history_rows,
+            "concept_history": concept_rows,
         }
-        return render(request, 'storyboard/section2.html', context)
+        return render(request, "storyboard/section2.html", context)
 
-    #     if progress.trial == 0:
-    #         context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
-    #     else:
-    #         progress_highestscore = Progress.objects.filter(student = user).filter(section = section).order_by("-score")[0]
-    #         score= progress_highestscore.score
-    #         context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."        
-    #     return render(request, 'storyboard/section2.html', context)
-        
-    else:    
-        # trial = progress.trial+1
-        # progress = Progress(student = user, section  = section, trial = trial, score = 0)
-        # progress.save()
-        number_of_questions = section.numberofquestions
-        for i in range(number_of_questions):
-            question = VerbQuestion.objects.filter(id=i)[0]
-            response = VerbResponse(id = i, student = user, question = question)
-            Section2Performance.objects.get_or_create(user=user, question=question)
-            response.save()
+
+    if not VerbResponse.objects.filter(student=user).exists():
+        num_q = section.numberofquestions
+        for i in range(num_q):
+            q = VerbQuestion.objects.get(id=i)
+            VerbResponse.objects.get_or_create(student=user, question=q)
+            Section2Performance.objects.get_or_create(user=user, question=q)
+
         # number_of_verbs = section.numberofverbs
         # for i in range(number_of_verbs*3):
         #     verb = ConjugationPractice.objects.filter(id=i)[0]
         #     response = ConjugationResponse(id = i, user = user, question = verb)
         #     response.save()
-        return redirect(reverse('section2_questionpage', args = (0,0)))
+    next_q = get_next_section2_question(user)
+    return redirect(reverse('section2_questionpage', args = (next_q.id,0)))
+    
+def get_next_section2_question(user):
+    perfs = list(Section2Performance.objects.filter(user=user))
+
+    if not perfs:
+        return VerbQuestion.objects.order_by("id").first()
+    
+    if len(perfs) < VerbQuestion.objects.count():
+        # some questions not yet attempted: pick one at random
+        attempted_q_ids = {perf.question.id for perf in perfs}
+        unattempted_questions = VerbQuestion.objects.exclude(id__in=attempted_q_ids)
+        return random.choice(unattempted_questions)
+
+    # otherwise: weakest mastery first
+    perfs.sort(key=lambda p: p.priority_score)
+    return perfs[0].question
+
+def get_next_section3_question(user):
+    perfs = list(Section3Performance.objects.filter(user=user))
+
+    if not perfs:
+        return StructureQuestion.objects.order_by("id").first()
+    
+    if len(perfs) < StructureQuestion.objects.count():
+        # some questions not yet attempted: pick one at random
+        attempted_q_ids = {perf.question.id for perf in perfs}
+        unattempted_questions = StructureQuestion.objects.exclude(id__in=attempted_q_ids)
+        return random.choice(unattempted_questions)
+
+    # otherwise: weakest mastery first
+    perfs.sort(key=lambda p: p.priority_score)
+    return perfs[0].question
 
 @login_required
 def section3(request):
@@ -208,8 +263,8 @@ def section3(request):
     if request.method == "GET":
         all_logs = []
         for perf in Section2Performance.objects.filter(user=user):
-            for entry in perf.history:
-                entry = dict(entry)  # copy
+            for h in perf.history:
+                entry = dict(h)  # copy
                 entry["question_id"] = perf.question_id
                 all_logs.append(entry)
 
@@ -229,17 +284,15 @@ def section3(request):
         #     context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."
         # return render(request, 'storyboard/section3.html', context)
 
-    else:    
+ 
         # trial = progress.trial+1
         # progress = Progress(student = user, section  = section, trial = trial, score = 0)
         # progress.save()
-        number_of_questions = section.numberofquestions
-        for i in range(number_of_questions):
-            question = StructureQuestion.objects.filter(id=i)[0]
-            response = StructureResponse(id = i, student = user, question = question)
-            response.save()
-            Section3Performance.objects.get_or_create(user=user, question = question)
-        return redirect(reverse('section3_questionpage', args = (0,)))
+    for q in StructureQuestion.objects.all():
+        StructureResponse.objects.get_or_create(student=user, question=q)
+        Section3Performance.objects.get_or_create(user=user, question=q)
+    next_q = get_next_section3_question(user)
+    return redirect(reverse("section3_questionpage", args=(next_q.id, 0)))
 
 @login_required
 def section4(request):
@@ -527,6 +580,7 @@ def get_form_conjugation(question_obj, ans):
 
 @login_required
 def section2_questionpage(request, id, step):
+
     print(request)
     user = request.user
     participant = get_object_or_404(Participant, user=user)
@@ -550,18 +604,28 @@ def section2_questionpage(request, id, step):
         #if random.random() <= 1:
             practice_tense = random.choice(tenses)
             print(practice_tense)
-            question = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
-            practice = question.question
-            context['user'] = user
-            context['conjugation'] = practice
-            context['qid'] = id
-            return render(request, 'storyboard/conjugation_practice.html', context)
+            # question = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
+            # practice = question.question
+            # context['user'] = user
+            # context['conjugation'] = practice
+            # context['qid'] = id
+            # return render(request, 'storyboard/conjugation_practice.html', context)\
+
+            # any incorrect conjugationResponse 
+
+            cr = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
+            # if cr is not None:
+            #     practice = cr.question
+            #     context['user'] = user
+            #     context['conjugation'] = practice
+            #     context['qid'] = id
+            #     return render(request, 'storyboard/conjugation_practice.html', context)
 
     question = get_object_or_404(VerbQuestion, id = id)
     question.sentence = question.sentence.replace("[blank]", "____________")
     question.save()
 
-    questions = {
+    FORM_MAP = {
         'tense_broad': get_form_tense_broad, 
         'tense_specific': get_form_tense_specific, 
         'subject': get_form_subject, 
@@ -577,13 +641,12 @@ def section2_questionpage(request, id, step):
         'tense_broad', 'tense_specific', 'subject', 'subject_type', 
         'formality', 'gender_matter', 'gender', 'plurality', 'conjugation'
     ]
-
     
     active_fields = []
     for field in ordered_fields:
         field_ans = getattr(question, field)
-        print(questions[field](question_obj=question, ans=field_ans))
-        form, form_ans, form_options = questions[field](question_obj=question, ans=field_ans)
+        print(FORM_MAP[field](question_obj=question, ans=field_ans))
+        form, form_ans, form_options = FORM_MAP[field](question_obj=question, ans=field_ans)
         if form != "N/A":
             active_fields.append((field, form, form_ans, form_options))
 
@@ -595,62 +658,59 @@ def section2_questionpage(request, id, step):
     # Unpack the current form
     current_field, current_form, current_form_ans, current_form_options = active_fields[step]
 
-    context['user'] = user
-    context['question'] = question
-    context['form'] = current_form
-    context['qid'] = id
-    context['section'] = section
-    context['step'] = step
-    context['total_steps'] = len(active_fields)
-    context['form_ans'] = current_form_ans
-    context['field'] = current_field
     perf = Section2Performance.objects.get(user=user, question=question)
-    context["performance"] = perf
-    if current_form_options != "N/A":
-        context['options'] = current_form_options
 
+    context.update({
+        "user": user,
+        "question": question,
+        "form": current_form,
+        "qid": id,
+        "step": step,
+        "section": section,
+        "total_steps": len(active_fields),
+        "field": current_field,
+        "form_ans": current_form_ans,
+        "options": (current_form_options if current_form_options != "N/A" else None),
+        "performance": perf,
+    })
     return render(request, 'storyboard/questionpage2_one.html', context)
     
 @login_required
 def nextquestion2(request):
     user = request.user
-
     qid = int(request.POST.get("qid", 0))
     step = int(request.POST.get("step", 0))
-    form_ans = request.POST.get("form_ans", 0)
-    if form_ans.isdigit(): form_ans = int(form_ans)
-    user_ans = request.POST.get("response", 0)
-    if user_ans.isdigit(): user_ans = int(user_ans)
-    else: user_ans = user_ans.lower()
-    field = request.POST.get("field", 0)
+
+    form_ans = request.POST.get("form_ans", "0")
+    form_ans = int(form_ans) if form_ans.isdigit() else form_ans.lower()
+
+    user_ans = request.POST.get("response", "0")
+    user_ans = int(user_ans) if user_ans.isdigit() else user_ans.lower()
+
+    field = request.POST.get("field", "")
 
     question = get_object_or_404(VerbQuestion, id=qid)
     response = VerbResponse.objects.get(student=user, question=question)
+
     response_field = getattr(response, field)
+
     attempt_value = 1 if form_ans == user_ans else 0
 
-    # ADAPTIVE PRIORITY SCORING HERE
+    temp_list = request.session.get("temp_correct_list", [])
+    temp_list.append(attempt_value)
+    request.session["temp_correct_list"] = temp_list
+
+    # Update per-question performance (for priority queue)
     perf, _ = Section2Performance.objects.get_or_create(
-        user=user, question=question
+        user=user,
+        question=question
     )
-
-    # Update mastery estimate
     perf.accuracy_history.append(attempt_value)
-    perf.update_score()
-
-    # Log detailed practice event
-    perf.history.append({
-        "timestamp": timezone.now().isoformat(),
-        "correct": bool(attempt_value),
-        "field": field,
-        "priority_after": perf.priority_score,
-    })
+    perf.update_score()  # updates priority_score
     perf.save()
 
-
-    # existing correctness-saving logic…
+    # Save student's raw answer sequence
     response_ans = ast.literal_eval(response.initial_ans_current)
-
     if len(response_ans) <= step:
         if field != "conjugation":
             options = ast.literal_eval(request.POST.get("options", "[]"))
@@ -661,20 +721,75 @@ def nextquestion2(request):
         response.initial_ans_current = response_ans
         response.save()
 
+    # Save correctness trace on the VerbResponse
     if response_field == "":
         response_field = f"{attempt_value}"
     else:
         response_field += f",{attempt_value}"
+
     setattr(response, field, response_field)
     response.save()
 
-    # If wrong, repeat same step
     if attempt_value == 0:
         messages.error(request, "Hmm...That answer isn't quite right...")
         return redirect(reverse("section2_questionpage", args=(qid, step)))
 
-    # If correct, next step
+    # To test: count how many active sub-questions there were originally
+    ordered_fields = [
+        'tense_broad','tense_specific','subject','subject_type',
+        'formality','gender_matter','gender','plurality','conjugation'
+    ]
+
+    # Mapping of Section 2 sub-questions → form generator functions
+    QUESTION_2 = {
+        'tense_broad': get_form_tense_broad,
+        'tense_specific': get_form_tense_specific,
+        'subject': get_form_subject,
+        'subject_type': get_form_subject_type,
+        'formality': get_form_formality,
+        'gender_matter': get_form_gender_matter,
+        'gender': get_form_gender,
+        'plurality': get_form_plurality,
+        'conjugation': get_form_conjugation,
+    }
+
+    active_fields = []
+    for f in ordered_fields:
+        ans = getattr(question, f)
+        form, _, _ = QUESTION_2[f](question_obj=question, ans=ans)
+        if form != "N/A":
+            active_fields.append(f)
+
+    is_last_step = (step + 1 == len(active_fields))
+
+    if is_last_step:
+        # Compute correct % for the whole question
+        correct_rate = sum(temp_list) / len(temp_list)
+
+        # Add ONE clean history row
+        Section2HistoryEntry.objects.create(
+            user=user,
+            question=question,
+            timestamp=timezone.now(),
+            sentence=question.sentence,
+            verb=question.verb,
+            context=question.context,
+            tense_broad=question.tense_broad,
+            tense_specific=question.tense_specific,
+            subject=question.subject,
+            subject_type=question.subject_type,
+            correct_rate=correct_rate,
+            priority_after=perf.priority_score,
+        )
+
+
+        # Clear temp list for next question
+        request.session["temp_correct_list"] = []
+
+    # --- Next sub-question ---
     return redirect(reverse("section2_questionpage", args=(qid, step + 1)))
+
+
 
 @login_required
 def section2_summary(request, id):
@@ -1645,5 +1760,4 @@ def import_questions():
 
 def group1():
     print (batchregister_group1())
-
 

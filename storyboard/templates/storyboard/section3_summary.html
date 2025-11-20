@@ -39,9 +39,11 @@
 </table>
 
 {% if is_last_question %}
-<a class="btn main" href="{% url 'section3' %}">Finish Section</a>
+    <a style="background-color:#6AC47E;" class="btn main" href="{% url 'section3' %}">Finish Section</a>
 {% else %}
-<a class="btn main" href="{% url 'section3_questionpage' qid|add:'1' 0 %}">Next Sentence</a>
+    <a style="background-color:#6AC47E;" class="btn main" href="{% url 'section3_questionpage' qid|add:1 0 %}">
+        Next Sentence →
+    </a>
 {% endif %}
 
 {% endblock %}
