@@ -11,7 +11,7 @@
 
 {% block content %}
 
-<h2>Conjugate the following verb in the {{ conjugation.tense }} tense</h2>
+<h2>Conjugate the following verb in the <strong>{{ conjugation.tense }}</strong> tense</h2>
 <h3>{{ conjugation.verb }}</h3>
 
 <div class="grid-container">
@@ -20,64 +20,83 @@
       <input type="text" id="je" name="je">
     </div>
     <div class="grid-item">
-      <label for="tu">Tu:</label>
-      <input type="text" id="tu" name="tu">
+        <label for="nous">Nous:</label>
+        <input type="text" id="nous" name="nous">
     </div>
     <div class="grid-item">
-      <label for="il_elle_on">Il/Elle/On:</label>
-      <input type="text" id="il_elle_on" name="il_elle_on">
-    </div>
-    <div class="grid-item">
-      <label for="nous">Nous:</label>
-      <input type="text" id="nous" name="nous">
+        <label for="tu">Tu:</label>
+        <input type="text" id="tu" name="tu">
     </div>
     <div class="grid-item">
         <label for="vous">Vous:</label>
         <input type="text" id="vous" name="vous">
     </div>
     <div class="grid-item">
+      <label for="il_elle_on">Il/Elle/On:</label>
+      <input type="text" id="il_elle_on" name="il_elle_on">
+    </div>
+    <div class="grid-item">
         <label for="ils_elles">Ils/Elles:</label>
         <input type="text" id="ils_elles" name="ils_elles">
     </div>
 </div>
-  
-{% if messages %}
-    {% for message in messages %}
-        {% if 'error' in message.tags %}
-            <p style="color:maroon;">{{ message }}</p>
-        {% endif %}
-        {% if 'success' in message.tags %}
-            <p style="color: #6AC47E;">{{ message }}</p>
-            <a class="btn main" href="{% url 'section2_questionpage' qid|add:'1' 0 %}">Next Question</a>
-        {% endif %}
-    {% endfor %}
-{% endif %}
+<br>
 
+<div id="output_success" style="display:none;">
+    <p style="color: #6AC47E;">Great job! You got all the conjugations correct!</p>
+    <a class="btn main" href="{% url 'section2_questionpage' qid 0 %}">Next Question</a>
+</div>
+
+<p id="output_error" style="display:none; color:maroon;"></p>
+  
+<br>
 <button class="btn main" onclick="checkInput()" id="checkans">Submit</button>
 
-<script>
+<script type="text/javascript">
 function checkInput(){
-        const token = getCSRFToken();
-        const ids = ['je', 'tu', 'il_elle_on', 'nous', 'vous', 'ils_elles']
-        const fields = []
-        for (let i=0; i<6; i++){
-            fields.push(document.getElementById(ids[i]).value);
+    const token = getCSRFToken();
+    console.log("here");
+    const conj_id = "{{ conjugation.id }}";
+    const field_names = ['je', 'tu', 'il_elle_on', 'nous', 'vous', 'ils_elles'];
+    const fields = [];
+    for (let i=0; i<6; i++){
+        fields.push(document.getElementById(field_names[i]).value);
+    }
+    $.ajax({
+        url:"check_conj_practice", 
+        type:"POST",
+        data: {
+            "conj_id": conj_id,
+            "conjugations": fields,
+            "csrfmiddlewaretoken": token, 
+        }, 
+        dataType:"json", 
+        success: function(response){
+            console.log("hiiiii");
+            if(response[0].correct){
+                const output_error = document.getElementById('output_error');
+                output_error.style.display = 'none';
+                const output_space = document.getElementById('output_success');
+                output_space.style.display = 'block';
+                const submit_button = document.getElementById('checkans');
+                submit_button.style.display = 'none';
+            }
+            else{
+                const output_space = document.getElementById('output_error');
+                output_space.textContent = response[0].output;
+                output_space.style.display = 'block';
+            }
+        } 
+        });
+    }
+    function getCSRFToken(){
+        var cookies = document.cookie.split(";");
+        for (var i = 0; i < cookies.length; i++) {
+            if (cookies[i].startsWith("csrftoken=")) {
+                return cookies[i].substring("csrftoken=".length, cookies[i].length);
+            }
         }
-        $.ajax({
-            url:"check_conj_practice", 
-            type:"POST",
-            data: {
-                "conjugations": fields,
-                "csrfmiddlewaretoken": token, 
-            }, 
-            dataType:"json", 
-            success: function(response){
-                if(response[0].correct){
-                    const submit_button = document.getElementById('checkans');
-                    submit_button.style.display = 'none';
-                }
-            } 
-            });
+        return "unknown";
     }
 </script>
 

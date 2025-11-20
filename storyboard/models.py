@@ -19,6 +19,7 @@ from django.utils import timezone
 # Create your models here.
 class Participant(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete = models.CASCADE, primary_key=True)
+    conj_practice = models.CharField(max_length= 500, blank = True) # what tenses is user in conj practice mode for
     signform = models.BooleanField(default = False) 
     exclude = models.BooleanField(default = False) 
     share = models.BooleanField(default = False)
@@ -32,6 +33,7 @@ class Section(models.Model):
     sectionname = models.CharField(max_length = 500, blank = True)
     totalnum = models.PositiveIntegerField(blank = True, default = 0)
     numberofquestions = models.PositiveIntegerField(blank = True, default = 0)
+    numberofverbs = models.PositiveIntegerField(blank = True, default = 0)
     def __unicode__(self):
         return 'id='+ str(self.pk)
 
@@ -202,6 +204,7 @@ class Section2Performance(models.Model):
         return f"{self.user} - {self.question} ({self.priority_score})"
 
 class ConjugationPractice(models.Model):
+    id = models.PositiveIntegerField(blank = True, default = 0, primary_key=True)
     verb = models.CharField(max_length = 1000, blank = True)
     tense = models.CharField(max_length = 1000, blank = True)
     type = models.CharField(max_length = 1000, blank = True)
@@ -213,6 +216,8 @@ class ConjugationPractice(models.Model):
     ils_elles = models.CharField(max_length = 1000, blank = True)
 
 class ConjugationResponse(models.Model):
+    conj_id = models.PositiveIntegerField(blank = True, default = 0)
+    tense =  models.CharField(max_length = 1000, blank = True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     question = models.ForeignKey(ConjugationPractice, on_delete=models.CASCADE)
     correct = models.BooleanField(blank= True, default=False)
@@ -255,3 +260,11 @@ class ConceptPerformance(models.Model):
 
         # Higher score = higher priority = weaker mastery
         self.priority_score = 1 / (correct_rate + 0.01)
+
+class ConjugationPerformace(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    tense = models.CharField(max_length=50)
+    # how many practice questions student has to do 
+    # whenever they get everything correct except final answer
+    #   if currently 0, set to 5 else up by 1
+    practice_mode = models.PositiveIntegerField(blank = True, default = 0) 

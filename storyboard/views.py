@@ -30,6 +30,7 @@ import re, math
 from collections import Counter
 from openai import OpenAI
 import string
+import random
 
 
 section_names = ['Section 1 (Profile)', 'Verb Conjugation Practice', 'Sentence Structure Practice', 'Chatbot',  ]
@@ -189,6 +190,11 @@ def section2(request):
             response = VerbResponse(id = i, student = user, question = question)
             Section2Performance.objects.get_or_create(user=user, question=question)
             response.save()
+        # number_of_verbs = section.numberofverbs
+        # for i in range(number_of_verbs*3):
+        #     verb = ConjugationPractice.objects.filter(id=i)[0]
+        #     response = ConjugationResponse(id = i, user = user, question = verb)
+        #     response.save()
         return redirect(reverse('section2_questionpage', args = (0,0)))
 
 @login_required
@@ -452,8 +458,9 @@ def get_form_tense_broad(question_obj, ans):
 
 def get_form_tense_specific(question_obj, ans):
     if ans == "-1": return ("N/A", -1, -1)
+    print("ANS", ans)
     question = "More specifically, what is the tense of the above sentence?"
-    past_options = ["Imparfait (imperfect)", "Passé composé (present perfect)", "Passé récent (Recent past)"]
+    past_options = ["Imparfait (imperfect)", "Passé composé (present perfect)", "Passé récent (recent past)"]
     future_options = ["Futur simple (the simple future)", "Futur proche (the near future)"]
     options = {"Past": past_options, "Future": future_options}
     options = options[question_obj.tense_broad.capitalize()]
@@ -470,6 +477,7 @@ def get_form_subject(question_obj, ans):
         words = [word for word in words if word not in ["", ans]]
         options = [ans]
         for i in range(3):
+            if len(words) == 0: break
             random_index = random.randrange(len(words))
             word = words.pop(random_index)
             options.append(word)
@@ -521,6 +529,7 @@ def get_form_conjugation(question_obj, ans):
 def section2_questionpage(request, id, step):
     print(request)
     user = request.user
+    participant = get_object_or_404(Participant, user=user)
     section = get_object_or_404(Section, id= 2)
     context = {}
 
@@ -530,6 +539,23 @@ def section2_questionpage(request, id, step):
 
     id = int(id)
     step = int(step)
+
+    conj_practice = getattr(participant, "conj_practice")
+    print("CONJ PRACTICE", conj_practice)
+    if step == 0 and conj_practice != "":
+        tenses = conj_practice.split(",")
+        chance_practice = .33 * len(tenses)
+        print("***chance practice", chance_practice)
+        if random.random() <= chance_practice:
+        #if random.random() <= 1:
+            practice_tense = random.choice(tenses)
+            print(practice_tense)
+            question = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
+            practice = question.question
+            context['user'] = user
+            context['conjugation'] = practice
+            context['qid'] = id
+            return render(request, 'storyboard/conjugation_practice.html', context)
 
     question = get_object_or_404(VerbQuestion, id = id)
     question.sentence = question.sentence.replace("[blank]", "____________")
@@ -665,10 +691,12 @@ def section2_summary(request, id):
 
     resp = VerbResponse.objects.get(student=user, question=question)
     user_answers = ast.literal_eval(resp.initial_ans_current)
+    print("USER ANS", user_answers)
     ans_idx = 0
 
     # Collect results
     summary_items = []
+    running_correct = True
     for field in ordered_fields:
         correct_answer = getattr(question, field)
 
@@ -676,14 +704,37 @@ def section2_summary(request, id):
             continue  # Skip disabled sub-questions
 
         user_answer = user_answers[ans_idx]
+        is_correct = str(user_answer).strip().capitalize() == str(correct_answer).strip().capitalize()
+        if(field=='conjugation' and running_correct and (not is_correct)):
+            print("REGISTERING THAT LAST IS ONLY INCORRECT")
+            tense = getattr(question, 'tense_broad')
+            student_prog, _ = ConjugationPerformace.objects.get_or_create(
+                user=user, tense=tense
+            )
+            print("student progress practice mode", getattr(student_prog, "practice_mode"))
+            if getattr(student_prog, "practice_mode") == 0:
+                print("here")
+                setattr(student_prog, "practice_mode", 5)
+                student_prog.save()
+                participant = get_object_or_404(Participant, user=user)
+                current_practice = getattr(participant, "conj_practice")
+                comma = "," if current_practice != "" else ""
+                current_practice += comma + tense
+                print("setting the participant conj_practice to:", current_practice)
+                setattr(participant, "conj_practice", current_practice)
+                participant.save()
+
 
         summary_items.append({
             "subq_label": field.replace("_", " ").title(),
             "correct_answer": correct_answer.capitalize(),
             "user_answer": user_answer,
-            "is_correct": (str(user_answer).strip().capitalize() == str(correct_answer).strip().capitalize())
+            "is_correct": is_correct
         })
         ans_idx += 1
+        running_correct = running_correct and is_correct
+    setattr(resp, "initial_ans_current", "[]")
+    resp.save()
 
     # Check if this was the last VerbQuestion
     is_last_question = (id + 1 >= section.numberofquestions)
@@ -696,6 +747,59 @@ def section2_summary(request, id):
     }
 
     return render(request, "storyboard/section2_summary.html", context)
+
+@login_required
+def check_conj_practice(request):
+    print("hi")
+    user = request.user
+    conj_practice_id = request.POST["conj_id"]
+    practice_question = get_object_or_404(ConjugationPractice, id=conj_practice_id)
+    tense_convert = {"present": "present", "imparfait (imperfect)": "past", "futur simple (the simple future)": "future"}
+    broad_tense = tense_convert[practice_question.tense]
+    practice_response = ConjugationResponse.objects.get(user=user, conj_id=conj_practice_id)
+    performance = ConjugationPerformace.objects.get(user=user, tense=broad_tense)
+    
+    num_practice_left = getattr(performance, "practice_mode") - 1
+    print("NUM LEFT", num_practice_left)
+    if(num_practice_left >= 0): # gets negative sometimes in debugging
+        setattr(performance, "practice_mode", num_practice_left)
+        performance.save()
+    #num_practice_left = 1
+    if num_practice_left <= 0:
+        participant = get_object_or_404(Participant, user=user)
+        user_conj_practice = getattr(participant, "conj_practice").split(",")
+        print("USSER CONJ PRACTICE", getattr(participant, "conj_practice"))
+        print("SPLIT", getattr(participant, "conj_practice").split(","))
+        updated_conj_practice = ""
+        if len(user_conj_practice) > 1:
+            user_conj_practice.remove(broad_tense)
+            updated_conj_practice = ",".join(user_conj_practice)
+        setattr(participant, "conj_practice", updated_conj_practice)
+        participant.save()
+
+    field_names = ['je', 'tu', 'il_elle_on', 'nous', 'vous', 'ils_elles']
+    print(request.POST)
+    fields = request.POST.getlist("conjugations[]")
+    print("FIELDS", fields)
+    incorrect_fields = []
+    for i in range(len(field_names)):
+        correct_ans = getattr(practice_question, field_names[i])
+        user_ans = fields[i]
+        if correct_ans.lower() != user_ans.lower():
+            incorrect_fields.append(field_names[i])
+    if len(incorrect_fields) == 0:
+        setattr(practice_response, "correct", True)
+        practice_response.save()
+        response = json.dumps([{'correct':True, "output":"Great job! You got all the conjugations correct!"}])
+    else:
+        setattr(practice_response, "correct", False)
+        practice_response.save()
+        incorrect = ", ".join(incorrect_fields)
+        incorrect = incorrect.replace("_", "/")
+        response = json.dumps([{'correct':False, 'output':f"Double check your answers for the following conjugations: {incorrect}"}])
+    print(response)
+    return HttpResponse(response, 'application/javascript')
+
 
 @login_required
 def section3_questionpage(request, id, step=0):
@@ -928,6 +1032,8 @@ def section3_summary(request, id):
             "is_correct": (str(user_answer).strip().capitalize() == str(correct_answer).strip().capitalize())
         })
         ans_idx += 1
+    setattr(resp, "initial_ans_current", "[]")
+    resp.save()
 
     is_last = (id + 1 >= section.numberofquestions)
 
@@ -1484,6 +1590,39 @@ def import_questions_section3():
     successmessage = "section 3 questions imported"
     return successmessage
 
+def import_verb_conj_questions():
+    data = pd.read_csv("french-verb-conjugation.csv")
+    section = get_object_or_404(Section, pk=2)
+    section.numberofverbs = len(data)
+    section.save()
+    users = Participant.objects.all()
+
+    id = 0
+    for i in range(len(data)):
+        entry = data.iloc[i]
+        verb = entry["infinitive"]
+        tenses = {"present": "present", "past": "imparfait (imperfect)", "future": "futur simple (the simple future)"}
+        for tense in tenses:
+            verb_tense = tenses[tense]
+            conj = ConjugationPractice(
+                id = id,
+                verb = verb,
+                tense = verb_tense,
+                je = entry[f"je|{tense}"],
+                tu = entry[f"tu|{tense}"],
+                il_elle_on = entry[f"il_elle_on|{tense}"],
+                nous = entry[f"nous|{tense}"],
+                vous = entry[f"vous|{tense}"],
+                ils_elles = entry[f"ils_elles|{tense}"]
+            )
+            conj.save()
+            for user in users:
+                resp = ConjugationResponse(conj_id=id, user=user.user, question=conj, tense=tense)
+                resp.save()
+            id += 1
+    successmessage = "verb conjugations imported"
+    return successmessage
+
 def register_new_user():
     name = "jesses1"
 
@@ -1501,6 +1640,7 @@ def startup():
 def import_questions():
     print (import_questions_section2())
     print (import_questions_section3())
+    print (import_verb_conj_questions())
 
 
 def group1():
