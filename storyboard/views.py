@@ -131,6 +131,64 @@ def section1(request):
     progress_list = Progress.objects.filter(student = user).filter(section = section).order_by("-trial")
     progress = progress_list[0]
 
+    context = {}
+
+    concept_history = []
+    for cp in ConceptPerformance.objects.filter(user=user):
+        if cp.accuracy_history:
+            acc = 100 * sum(cp.accuracy_history) / len(cp.accuracy_history)
+        else:
+            acc = 0
+
+        concept_history.append({
+            "concept": cp.concept.replace("_", " ").title(),
+            "accuracy": acc,
+            "priority_score": cp.priority_score,
+        })
+
+    # Practice History (Section 2 + 3 rows merged)
+    section2_history = []
+    section3_history = []
+
+
+    # Section 2
+    for perf in Section2HistoryEntry.objects.filter(user=user):
+        q = perf.question
+        section2_history.append({
+            "timestamp": perf.timestamp,
+            "sentence": q.sentence,
+            "verb": q.verb,
+            "context": q.context,
+            "correct_rate": perf.correct_rate,
+            "priority_after": perf.priority_after,
+        })
+
+    # Section 3
+    for perf in Section3HistoryEntry.objects.filter(user=user):
+        q = perf.question
+        section3_history.append({
+            "timestamp": perf.timestamp,
+            "sentence": q.sentence,
+                "context": q.context,
+                "noun": q.noun,
+                "subject_matter": q.subject_matter,
+                "subject": q.subject,
+                "gender": q.gender,
+                "plurality": q.plurality,
+                "correct_rate": perf.correct_rate,
+                "priority_after": perf.priority_after,
+            })
+
+    # Sort descending by time
+    section
+    section3_history.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    # Add to context
+    context["concept_history"] = concept_history
+    context["conjugation_history"] = section2_history
+    context["structure_history"] = section3_history
+
+
     if request.method == "GET":
         if progress.trial == 0:
             context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
@@ -162,19 +220,15 @@ def section2(request):
 
         entries = Section2HistoryEntry.objects.filter(user=user).order_by("-timestamp")
 
-        for h in entries:
+        for entry in entries:
+            q = entry.question
             history_rows.append({
-                "timestamp": h.timestamp,
-                "question_id": h.question.id,
-                "sentence": h.sentence,
-                "verb": h.verb,
-                "context": h.context,
-                "tense_broad": h.tense_broad,
-                "tense_specific": h.tense_specific,
-                "subject": h.subject,
-                "subject_type": h.subject_type,
-                "correct_rate": h.correct_rate,
-                "priority_after": h.priority_after,
+                "timestamp": entry.timestamp,
+                "sentence": q.sentence,
+                "verb": q.verb,
+                "context": q.context,
+                "correct_rate": entry.correct_rate,
+                "priority_after": entry.priority_after,
             })
 
         # Newest first
@@ -236,21 +290,62 @@ def get_next_section2_question(user):
     perfs.sort(key=lambda p: p.priority_score)
     return perfs[0].question
 
+import random
+
 def get_next_section3_question(user):
+
+    if StructureQuestion.objects.count() == 0:
+        return None
+
+    attempted_ids = set(
+        Section3Performance.objects.filter(user=user)
+        .values_list("question_id", flat=True)
+    )
+    all_ids = set(StructureQuestion.objects.values_list("id", flat=True))
+
+    unattempted = list(all_ids - attempted_ids)
+    if unattempted:
+        return StructureQuestion.objects.get(id=random.choice(unattempted))
+
+    weakest_concept = (
+        ConceptPerformance.objects.filter(user=user)
+        .order_by("-priority_score")   # highest score = weakest mastery
+        .first()
+    )
+
+    if weakest_concept:
+        concept = weakest_concept.concept
+
+        # Find all questions that contain this concept
+        # and are valid (not "-1")
+        field_filter = {f"{concept}__isnull": False}
+        qs = StructureQuestion.objects.filter(**field_filter).exclude(
+            **{concept: "-1"}
+        )
+
+        if qs.exists():
+            # For those questions, rank by Section3Performance priority_score
+            perf_map = {
+                p.question.id: p.priority_score
+                for p in Section3Performance.objects.filter(user=user)
+            }
+
+            # Pick the weakest question for this concept
+            qs_sorted = sorted(qs, key=lambda q: perf_map.get(q.id, 1.0))
+            return qs_sorted[0]
+
     perfs = list(Section3Performance.objects.filter(user=user))
 
-    if not perfs:
-        return StructureQuestion.objects.order_by("id").first()
-    
-    if len(perfs) < StructureQuestion.objects.count():
-        # some questions not yet attempted: pick one at random
-        attempted_q_ids = {perf.question.id for perf in perfs}
-        unattempted_questions = StructureQuestion.objects.exclude(id__in=attempted_q_ids)
-        return random.choice(unattempted_questions)
+    # If all priority scores are the same → choose randomly
+    unique_scores = {p.priority_score for p in perfs}
+    if len(unique_scores) == 1:
+        return random.choice(perfs).question
 
-    # otherwise: weakest mastery first
+    # Otherwise choose weakest mastery question
     perfs.sort(key=lambda p: p.priority_score)
     return perfs[0].question
+
+
 
 @login_required
 def section3(request):
@@ -261,21 +356,29 @@ def section3(request):
     # progress = progress_list[0]
 
     if request.method == "GET":
-        all_logs = []
-        for perf in Section2Performance.objects.filter(user=user):
-            for h in perf.history:
-                entry = dict(h)  # copy
-                entry["question_id"] = perf.question_id
-                all_logs.append(entry)
+        logs = Section3HistoryEntry.objects.filter(user=user).order_by("-timestamp")
 
-        # Sort newest first
-        all_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        history_rows = []
+        for h in logs:
+            history_rows.append({
+                "timestamp": h.timestamp,
+                "sentence": h.sentence,
+                "context": h.context,
+                "noun": h.noun,
+                "subject_matter": h.subject_matter,
+                "subject": h.subject,
+                "gender": h.gender,
+                "plurality": h.plurality,
+                "correct_rate": h.correct_rate,
+                "priority_after": h.priority_after,
+            })
 
         context = {
             "user": user,
-            "performance": {"history": all_logs},
+            "practice_history": history_rows,
         }
-        return render(request, 'storyboard/section3.html', context)
+
+        return render(request, "storyboard/section3.html", context)
         # if progress.trial == 0:
         #     context['sectionstatus'] = "You haven't started this section yet. Please click on the button to start this section."         
         # else:
@@ -284,15 +387,15 @@ def section3(request):
         #     context["sectionstatus"] = "Your current score for this section is "+str(score)+". You can work on the section again to earn a new score."
         # return render(request, 'storyboard/section3.html', context)
 
- 
+    else:
         # trial = progress.trial+1
         # progress = Progress(student = user, section  = section, trial = trial, score = 0)
         # progress.save()
-    for q in StructureQuestion.objects.all():
-        StructureResponse.objects.get_or_create(student=user, question=q)
-        Section3Performance.objects.get_or_create(user=user, question=q)
-    next_q = get_next_section3_question(user)
-    return redirect(reverse("section3_questionpage", args=(next_q.id, 0)))
+        for q in StructureQuestion.objects.all():
+            StructureResponse.objects.get_or_create(student=user, question=q)
+            Section3Performance.objects.get_or_create(user=user, question=q)
+        next_q = get_next_section3_question(user)
+        return redirect(reverse("section3_questionpage", args=(next_q.id, 0)))
 
 @login_required
 def section4(request):
@@ -509,15 +612,34 @@ def get_form_tense_broad(question_obj, ans):
     form_ans = options.index(ans.capitalize()) + 1
     return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
+def normalize_tense(s):
+    return s.lower().replace(" ", "").replace("(", "").replace(")", "")
+
 def get_form_tense_specific(question_obj, ans):
-    if ans == "-1": return ("N/A", -1, -1)
-    print("ANS", ans)
+    if ans == "-1":
+        return ("N/A", -1, -1)
     question = "More specifically, what is the tense of the above sentence?"
-    past_options = ["Imparfait (imperfect)", "Passé composé (present perfect)", "Passé récent (recent past)"]
-    future_options = ["Futur simple (the simple future)", "Futur proche (the near future)"]
-    options = {"Past": past_options, "Future": future_options}
-    options = options[question_obj.tense_broad.capitalize()]
-    form_ans = options.index(ans.capitalize()) + 1
+    past_options = [
+        "Imparfait (imperfect)",
+        "Passé composé (present perfect)",
+        "Passé récent (recent past)",
+    ]
+    future_options = [
+        "Futur simple (the simple future)",
+        "Futur proche (the near future)",
+    ]
+    broad = question_obj.tense_broad.strip().lower()
+    if broad == "past":
+        options = past_options
+    else:
+        options = future_options
+    ans_norm = normalize_tense(ans)
+    options_norm = [normalize_tense(x) for x in options]
+    if ans_norm not in options_norm:
+        print("WARNING: tense_specific CSV mismatch:", ans, "not in", options)
+        form_ans = 1  # default to first
+    else:
+        form_ans = options_norm.index(ans_norm) + 1
     return (QuestionFormMC(question=question, optionlist=options), form_ans, options)
 
 def get_form_subject(question_obj, ans):
@@ -604,23 +726,14 @@ def section2_questionpage(request, id, step):
         #if random.random() <= 1:
             practice_tense = random.choice(tenses)
             print(practice_tense)
-            # question = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
-            # practice = question.question
-            # context['user'] = user
-            # context['conjugation'] = practice
-            # context['qid'] = id
-            # return render(request, 'storyboard/conjugation_practice.html', context)\
-
+            question = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
+            if question is not None:
+                practice = question.question
+                context['user'] = user
+                context['conjugation'] = practice
+                context['qid'] = id
             # any incorrect conjugationResponse 
-
-            cr = ConjugationResponse.objects.filter(user=user).filter(correct=False).filter(tense=practice_tense).order_by('?').first()
-            # if cr is not None:
-            #     practice = cr.question
-            #     context['user'] = user
-            #     context['conjugation'] = practice
-            #     context['qid'] = id
-            #     return render(request, 'storyboard/conjugation_practice.html', context)
-
+            return render(request, 'storyboard/conjugation_practice.html', context)
     question = get_object_or_404(VerbQuestion, id = id)
     question.sentence = question.sentence.replace("[blank]", "____________")
     question.save()
@@ -957,7 +1070,6 @@ def section3_questionpage(request, id, step=0):
     concepts = ConceptPerformance.objects.filter(user=user).order_by("-priority_score")
     context["concepts"] = concepts
 
-
     return render(request, "storyboard/questionpage3_one.html", context)
 
 def get_form_subject_matter(question_obj, ans):
@@ -1004,116 +1116,106 @@ def get_form_answer(question_obj, ans):
 @login_required
 def nextquestion3(request):
     user = request.user
-    qid = int(request.POST.get("qid", 0))
-    step = int(request.POST.get("step", 0))
+    qid = int(request.POST.get("qid"))
+    step = int(request.POST.get("step"))
 
     question = get_object_or_404(StructureQuestion, id=qid)
     response = StructureResponse.objects.get(student=user, question=question)
 
     field = request.POST.get("field")
     correct_text = getattr(question, field).strip().lower()
-
-    # Get user input
     raw_user_ans = request.POST.get("response")
 
     # Determine MC vs free response
     if field == "answer":
         user_text = raw_user_ans.strip().lower()
     else:
-        options_raw = request.POST.get("options")
-        options = ast.literal_eval(options_raw)
+        options = ast.literal_eval(request.POST.get("options"))
         user_choice_index = int(raw_user_ans) - 1
         user_text = options[user_choice_index].strip().lower()
 
     # Score it
     attempt_value = 1 if user_text == correct_text else 0
 
-    # Update priority queue
+    # --- Update per-question performance (priority queue) ---
     perf, _ = Section3Performance.objects.get_or_create(
         user=user, question=question
     )
-
-    # Update mastery estimate
     perf.accuracy_history.append(attempt_value)
-    perf.update_score()
+    perf.update_score()  # recalculates priority_score
+    perf.save()
 
-    # subject type
-    concept = field  
-
+    # --- Update concept-level performance ---
     concept_perf, _ = ConceptPerformance.objects.get_or_create(
         user=user,
-        concept=concept
+        concept=field,
     )
-
     concept_perf.accuracy_history.append(attempt_value)
     concept_perf.update_score()
     concept_perf.save()
 
-
-    # Log detailed practice event
-    perf.history.append({
-        "timestamp": timezone.now().isoformat(),
-        "correct": bool(attempt_value),
-        "field": field,
-        "priority_after": perf.priority_score,
-    })
-    perf.save()
-
-
-    # Save attempt history to StructureResponse
+    # --- Save attempt history to StructureResponse ---
     response_field = getattr(response, field)
     if response_field == "":
         response_field = str(attempt_value)
     else:
         response_field += f",{attempt_value}"
-
     setattr(response, field, response_field)
     response.save()
 
-    # Save user answer in initial_ans_current
+    # --- Save student's raw answer sequence ---
     answers = ast.literal_eval(response.initial_ans_current)
     if len(answers) <= step:
-        if field == "answer":
-            answers.append(user_text)
-        else:
-            answers.append(user_text)
+        answers.append(user_text)
         response.initial_ans_current = answers
         response.save()
 
-    # Wrong → repeat step
+    # Wrong → repeat same step of same question
     if attempt_value == 0:
         messages.error(request, "Hmm...That answer isn't quite right...")
         return redirect(reverse("section3_questionpage", args=(qid, step)))
 
-    # 1. find weakest concept
-    weakest = ConceptPerformance.objects.filter(user=user).order_by("-priority_score").first()
+    # Determine enabled fields for this question
+    active_fields = []
+    for f in STRUCTURE_FIELDS:
+        ans = getattr(question, f)
+        form, _, _ = STRUCTURE_FORMS[f](question_obj=question, ans=ans)
+        if form != "N/A":
+            active_fields.append(f)
 
-    if weakest:
-        weakest_concept = weakest.concept
+    is_last_step = (step + 1 == len(active_fields))
 
-        # 2. find ANY question containing this sub-question type
-        #    AND has that field not equal to "-1" (meaning: the concept exists)
-        qs = StructureQuestion.objects.filter(
-            **{f"{weakest_concept}__isnull": False}
+    # --- If last step: create a HISTORY ENTRY ---
+    if is_last_step:
+        # Compute correct rate for this question
+        temp_correct = request.session.get("temp_correct_list_3", [])
+        temp_correct.append(attempt_value)
+        correct_rate = sum(temp_correct) / len(temp_correct)
+
+        Section3HistoryEntry.objects.create(
+            user=user,
+            question=question,
+            timestamp=timezone.now(),
+            correct_rate=correct_rate,
+            priority_after=perf.priority_score,
+
+            sentence=question.sentence,
+            context=question.context,
+            noun=question.noun,
+            subject_matter=question.subject_matter,
+            subject=question.subject,
+            gender=question.gender,
+            plurality=question.plurality,
         )
-        qs = qs.exclude(**{weakest_concept: "-1"})
 
-        if qs.exists():
-            # Could choose:
-            #   - random.choice
-            #   - least practiced among them
-            #   - lowest performance among them
-            next_question = qs.first()  # simplest
-        else:
-            # Fallback if no question trains that concept
-            next_question = StructureQuestion.objects.first()
-    else:
-        # No concept data yet
-        next_question = StructureQuestion.objects.first()
+        # Reset correct list for next question
+        request.session["temp_correct_list_3"] = []
 
-    qid = next_question.id
+        # Choose NEXT QUESTION using your priority logic
+        next_q = get_next_section3_question(user)
+        return redirect(reverse("section3_questionpage", args=(next_q.id, 0)))
 
-    # Correct → next step
+    # Continue same question, next sub-question
     return redirect(reverse("section3_questionpage", args=(qid, step + 1)))
 
 

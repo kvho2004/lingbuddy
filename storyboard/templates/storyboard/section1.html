@@ -13,6 +13,129 @@
 <h1> This page will show student progress as we are tracking it from knowledge tracing</h1>
 <p>No buttons, no furher connections to other pages</p>
 
+<h3>Mastery by Verb Conjugation Sub-question Category</h3>
+
+{% if concept_history %}
+<table class="table table-bordered table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Concept</th>
+            <th>Accuracy (%)</th>
+            <th>Priority Score</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in concept_history %}
+        <tr>
+            <td>{{ c.concept }}</td>
+            <td>{{ c.accuracy|floatformat:1 }}</td>
+            <td>{{ c.priority_score|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No concept history yet.</p>
+{% endif %}
+
+<h3>Verb Conjugation Practice History</h3>
+
+{% if practice_history %}
+<table class="table table-bordered table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Sentence</th>
+            <th>Verb</th>
+            <th>Context</th>
+            <th>Correct %</th>
+            <th>Priority Score</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in practice_history %}
+        <tr>
+            <td>{{ row.timestamp|date:"Y-m-d H:i" }}</td>
+            <td>{{ row.sentence }}</td>
+            <td>{{ row.verb }}</td>
+            <td>{{ row.context }}</td>
+            <td>{{ row.correct_rate|floatformat:2 }}</td>
+            <td>{{ row.priority_after|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No practice history yet.</p>
+{% endif %}
+
+<h3>Your Weakest Sentence Structure Concepts</h3>
+
+{% if concept_history %}
+<table class="table table-bordered table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Concept</th>
+            <th>Accuracy (%)</th>
+            <th>Priority Score</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in concept_history %}
+        <tr>
+            <td>{{ c.concept }}</td>
+            <td>{{ c.accuracy|floatformat:1 }}</td>
+            <td>{{ c.priority_score|floatformat:2 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No concept history yet. Begin practicing to see your mastery progress!</p>
+{% endif %}
+
+<br><br>
+
+<h3>Sentence Structure Practice History</h3>
+
+{% if practice_history %}
+<table class="table table-bordered table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Sentence</th>
+            <th>Context</th>
+            <th>Noun</th>
+            <th>Subject Matter</th>
+            <th>Subject</th>
+            <th>Gender</th>
+            <th>Plurality</th>
+            <th>Correct Rate</th>
+            <th>Priority After</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for entry in practice_history %}
+        <tr>
+            <td>{{ entry.timestamp|date:"Y-m-d H:i" }}</td>
+            <td>{{ entry.sentence }}</td>
+            <td>{{ entry.context }}</td>
+            <td>{{ entry.noun }}</td>
+            <td>{{ entry.subject_matter }}</td>
+            <td>{{ entry.subject }}</td>
+            <td>{{ entry.gender }}</td>
+            <td>{{ entry.plurality }}</td>
+            <td>{{ entry.correct_rate|floatformat:2 }}</td>
+            <td>{{ entry.priority_after|floatformat:2 }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No sentence structure practice history yet. Start practicing to see your progress!</p>
+{% endif %}
+
+
 </div>
 
 {% endblock %}
