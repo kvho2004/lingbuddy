@@ -11,5 +11,4 @@ exit()
 
 python manage.py runserver
 
-Username and password for login: "student1"
 
